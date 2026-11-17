@@ -51,6 +51,8 @@ export type AgencyRow = {
   last_checked_at: string | null;
   relevance: "A" | "B" | "C" | "D" | "E" | null;
   relevance_keywords: string[];
+  agency_type: string | null;
+  priority: number | null;
   origin: string;
   agency_contacts: { email: string | null }[];
 };
@@ -135,7 +137,7 @@ export async function queryAgencies(
   let query = supabase
     .from("agencies")
     .select(
-      `id, name, identity_key, website_url, country_code, country_name, description, phone, city, website_status, last_checked_at, relevance, relevance_keywords, origin, ${contacts}`,
+      `id, name, identity_key, website_url, country_code, country_name, description, phone, city, website_status, last_checked_at, relevance, relevance_keywords, agency_type, priority, origin, ${contacts}`,
       { count: "exact" },
     )
     .eq("workspace_id", workspaceId);

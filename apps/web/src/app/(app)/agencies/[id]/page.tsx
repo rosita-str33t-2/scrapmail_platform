@@ -7,6 +7,7 @@ import { LiveRefresh } from "@/components/app/live-refresh";
 import { RelevanceBadge } from "@/components/app/relevance-badge";
 import { StatusBadge } from "@/components/app/status-badge";
 import { countryName } from "@/lib/countries";
+import { agencyId } from "@/lib/instantly";
 import { requireWorkspace } from "@/lib/auth/workspace";
 import { createClient } from "@/lib/supabase/server";
 
@@ -36,6 +37,9 @@ type Agency = {
   last_checked_at: string | null;
   relevance: string | null;
   relevance_keywords: string[];
+  agency_type: string | null;
+  priority: number | null;
+  ref: number;
   origin: string;
   created_at: string;
   agency_contacts: {
@@ -80,7 +84,7 @@ export default async function AgencyPage({
     supabase
       .from("agencies")
       .select(
-        "id, name, identity_key, website_url, website_title, website_status, country_code, country_name, city, address, phone, description, last_checked_at, created_at, relevance, relevance_keywords, origin, agency_contacts(id, email, full_name, job_title, is_role_address, source, email_original, email_status, email_note), agency_sources(id, source_type, source_name, source_ref, observed_at)",
+        "id, name, identity_key, website_url, website_title, website_status, country_code, country_name, city, address, phone, description, last_checked_at, created_at, relevance, relevance_keywords, agency_type, priority, ref, origin, agency_contacts(id, email, full_name, job_title, is_role_address, source, email_original, email_status, email_note), agency_sources(id, source_type, source_name, source_ref, observed_at)",
       )
       .eq("id", id)
       .maybeSingle<Agency>(),
@@ -151,6 +155,17 @@ export default async function AgencyPage({
             {agency.relevance_keywords.length > 0 && (
               <p className="mt-2 text-xs text-muted-foreground">
                 Matched: {agency.relevance_keywords.join(", ")}
+              </p>
+            )}
+            {agency.agency_type && (
+              <p className="mt-2 text-sm">
+                <span className="font-semibold">
+                  Priority {agency.priority}
+                </span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {agency.agency_type} · {agencyId(agency.ref)}
+                </span>
               </p>
             )}
           </div>

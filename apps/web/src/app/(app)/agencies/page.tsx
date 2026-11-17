@@ -1,4 +1,4 @@
-import { Download, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -15,10 +15,10 @@ import {
   SortHeader,
   TableFrame,
 } from "@/components/app/data-table";
+import { ExportDialog } from "@/components/app/export-dialog";
 import { LiveRefresh } from "@/components/app/live-refresh";
 import { EmptyState, PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status-badge";
-import { Button } from "@/components/ui/button";
 import { RelevanceBadge } from "@/components/app/relevance-badge";
 import { hasFilters, parseFilters, queryAgencies } from "@/lib/agencies";
 import { countryName } from "@/lib/countries";
@@ -70,11 +70,6 @@ export default async function AgenciesPage({ searchParams }: Props) {
 
   const total = count ?? 0;
   const filtered = hasFilters(filters);
-  const exportQuery = new URLSearchParams(
-    Object.entries(params).flatMap(([k, v]) =>
-      k !== "page" && typeof v === "string" && v ? [[k, v]] : [],
-    ),
-  ).toString();
 
   return (
     <>
@@ -88,13 +83,7 @@ export default async function AgenciesPage({ searchParams }: Props) {
               workspaceId={workspaceId}
               minIntervalMs={10000}
             />
-            <Button asChild variant="outline">
-              <a
-                href={`/agencies/export${exportQuery ? `?${exportQuery}` : ""}`}
-              >
-                <Download /> Export CSV
-              </a>
-            </Button>
+            <ExportDialog />
           </div>
         }
       />
@@ -255,6 +244,15 @@ export default async function AgenciesPage({ searchParams }: Props) {
                         level={a.relevance}
                         keywords={a.relevance_keywords}
                       />
+                      {a.agency_type && (
+                        <div className="mt-1 text-xs whitespace-nowrap">
+                          <span className="font-semibold">{`P${a.priority}`}</span>
+                          <span className="text-muted-foreground">
+                            {" "}
+                            · {a.agency_type}
+                          </span>
+                        </div>
+                      )}
                       {a.origin !== "import" && (
                         <div className="mt-1 text-xs text-muted-foreground">
                           {ORIGIN_LABEL[a.origin] ?? a.origin}
