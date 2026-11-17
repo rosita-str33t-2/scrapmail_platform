@@ -8,6 +8,7 @@ import {
   SearchInput,
   TableFrame,
 } from "@/components/app/data-table";
+import { ExportDialog } from "@/components/app/export-dialog";
 import { LiveRefresh } from "@/components/app/live-refresh";
 import { EmptyState, PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -116,11 +117,14 @@ export default async function ContactsPage({ searchParams }: Props) {
         title="Contacts"
         description={`${total.toLocaleString()} valid email contacts${filtered ? " match your filters" : ""}.`}
         actions={
-          <LiveRefresh
-            tables={["scrape_jobs"]}
-            workspaceId={workspaceId}
-            minIntervalMs={10000}
-          />
+          <div className="flex items-center gap-3">
+            <LiveRefresh
+              tables={["scrape_jobs"]}
+              workspaceId={workspaceId}
+              minIntervalMs={10000}
+            />
+            <ExportDialog />
+          </div>
         }
       />
 
