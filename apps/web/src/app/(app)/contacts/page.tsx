@@ -8,7 +8,7 @@ import {
   SearchInput,
   TableFrame,
 } from "@/components/app/data-table";
-import { ExportDialog } from "@/components/app/export-dialog";
+import { ExportButton } from "@/components/app/export-button";
 import { LiveRefresh } from "@/components/app/live-refresh";
 import {
   EmptyState,
@@ -18,6 +18,11 @@ import {
 } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status-badge";
 import { requireWorkspace } from "@/lib/auth/workspace";
+import {
+  hasContactFilters,
+  parseContactFilters,
+  queryContacts,
+} from "@/lib/contacts";
 import { countryName } from "@/lib/countries";
 import { createClient } from "@/lib/supabase/server";
 
@@ -68,58 +73,24 @@ function hrefWith(
 export default async function ContactsPage({ searchParams }: Props) {
   const { workspaceId } = await requireWorkspace();
   const params = await searchParams;
-  const q = (params.q ?? "").trim().slice(0, 100);
-  const source = ["import", "website"].includes(params.source ?? "")
-    ? params.source
-    : "";
-  const kind = ["person", "general"].includes(params.kind ?? "")
-    ? params.kind
-    : "";
+  const filters = parseContactFilters(params);
+  const { kind } = filters;
   const size = [25, 50, 100].includes(Number(params.size))
     ? Number(params.size)
     : 50;
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
-  const countries = [
-    ...new Set(
-      (params.country ?? "").split(",").filter((c) => /^[A-Z]{2}$/.test(c)),
-    ),
-  ].slice(0, 250);
-  const relevance = ["abc", "A", "B", "C"].includes(params.relevance ?? "")
-    ? params.relevance!
-    : "";
-  // Filters on the agency need an inner join (contacts of matching agencies only).
-  const byAgency = countries.length > 0 || relevance !== "";
 
   const supabase = await createClient();
   const countsPromise = supabase.rpc("agency_country_counts", {
     p_workspace_id: workspaceId,
   });
-  let query = supabase
-    .from("agency_contacts")
-    .select(
-      `id, email, full_name, job_title, is_role_address, source, email_original, email_status, email_note, agencies${byAgency ? "!inner" : ""}(id, name, country_code)`,
-      { count: "exact" },
-    )
-    .eq("workspace_id", workspaceId);
-  if (countries.length) query = query.in("agencies.country_code", countries);
-  if (relevance === "abc")
-    query = query.in("agencies.relevance", ["A", "B", "C"]);
-  else if (relevance) query = query.eq("agencies.relevance", relevance);
-  const term = q.replace(/[%,()*]/g, " ").trim();
-  // Conditions where any part may match; combined with AND.
-  const anyOf: string[] = [];
-  if (term) anyOf.push(`email.ilike.%${term}%,full_name.ilike.%${term}%`);
-  // Only valid addresses (and new ones not checked yet, e.g. from an import).
-  anyOf.push("email_status.is.null,email_status.eq.valid");
-  if (anyOf.length === 1) query = query.or(anyOf[0]!);
-  else if (anyOf.length > 1)
-    query = query.or(`and(${anyOf.map((g) => `or(${g})`).join(",")})`);
-  if (source) query = query.eq("source", source);
-  if (kind === "person") query = query.eq("is_role_address", false);
-  if (kind === "general") query = query.eq("is_role_address", true);
-
-  const { data: contacts, count } = await query
-    .order("email")
+  const { data: contacts, count } = await queryContacts(
+    supabase,
+    workspaceId,
+    filters,
+    "id, email, full_name, job_title, is_role_address, source, email_original, email_status, email_note",
+    "id, name, country_code",
+  )
     .range((page - 1) * size, page * size - 1)
     .returns<Contact[]>();
   const total = count ?? 0;
@@ -127,7 +98,14 @@ export default async function ContactsPage({ searchParams }: Props) {
     country_code: string | null;
     total: number;
   }[];
-  const filtered = Boolean(term || source || kind || byAgency);
+  const filtered = hasContactFilters(filters);
+  // The export takes the same filters as the list (not the page or page size).
+  const exportQuery = new URLSearchParams(
+    Object.entries(params).filter(
+      (e): e is [string, string] =>
+        Boolean(e[1]) && e[0] !== "page" && e[0] !== "size",
+    ),
+  ).toString();
 
   return (
     <>
@@ -155,7 +133,10 @@ export default async function ContactsPage({ searchParams }: Props) {
               workspaceId={workspaceId}
               minIntervalMs={10000}
             />
-            <ExportDialog />
+            <ExportButton
+              href={`/contacts/export${exportQuery ? `?${exportQuery}` : ""}`}
+              count={total}
+            />
           </>
         }
       />

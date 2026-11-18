@@ -54,7 +54,8 @@ export type AgencyRow = {
   agency_type: string | null;
   priority: number | null;
   origin: string;
-  agency_contacts: { email: string | null }[];
+  ref: number;
+  agency_contacts: { email: string | null; full_name?: string | null }[];
 };
 
 type Params = Record<string, string | string[] | undefined>;
@@ -126,19 +127,30 @@ export function hasFilters(filters: AgencyFilters) {
 export async function queryAgencies(
   workspaceId: string,
   filters: AgencyFilters,
-  { limit, offset }: { limit: number; offset: number },
+  {
+    limit,
+    offset,
+    contactColumns = "email",
+    count = true,
+  }: {
+    limit: number;
+    offset: number;
+    /** Contact fields to embed (the CSV export also needs the name). */
+    contactColumns?: string;
+    count?: boolean;
+  },
 ) {
   const supabase = await createClient();
   const needsEmail =
     filters.contact === "email" || filters.contact === "email_phone";
   const contacts = needsEmail
-    ? "agency_contacts!inner(email)"
-    : "agency_contacts(email)";
+    ? `agency_contacts!inner(${contactColumns})`
+    : `agency_contacts(${contactColumns})`;
   let query = supabase
     .from("agencies")
     .select(
-      `id, name, identity_key, website_url, country_code, country_name, description, phone, city, website_status, last_checked_at, relevance, relevance_keywords, agency_type, priority, origin, ${contacts}`,
-      { count: "exact" },
+      `id, name, identity_key, website_url, country_code, country_name, description, phone, city, website_status, last_checked_at, relevance, relevance_keywords, agency_type, priority, origin, ref, ${contacts}`,
+      count ? { count: "exact" } : undefined,
     )
     .eq("workspace_id", workspaceId);
 

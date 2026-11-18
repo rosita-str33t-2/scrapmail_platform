@@ -15,7 +15,7 @@ import {
   SortHeader,
   TableFrame,
 } from "@/components/app/data-table";
-import { ExportDialog } from "@/components/app/export-dialog";
+import { ExportButton } from "@/components/app/export-button";
 import { LiveRefresh } from "@/components/app/live-refresh";
 import { EmptyState, PageHeader, Toolbar } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -70,6 +70,13 @@ export default async function AgenciesPage({ searchParams }: Props) {
 
   const total = count ?? 0;
   const filtered = hasFilters(filters);
+  // The export takes the same filters as the list (not the page or page size).
+  const exportParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (key === "page" || key === "size") continue;
+    for (const v of [value ?? []].flat()) if (v) exportParams.append(key, v);
+  }
+  const exportQuery = exportParams.toString();
 
   return (
     <>
@@ -84,7 +91,10 @@ export default async function AgenciesPage({ searchParams }: Props) {
               workspaceId={workspaceId}
               minIntervalMs={10000}
             />
-            <ExportDialog />
+            <ExportButton
+              href={`/agencies/export${exportQuery ? `?${exportQuery}` : ""}`}
+              count={total}
+            />
           </>
         }
       />

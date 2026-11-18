@@ -1,12 +1,8 @@
 import "server-only";
 
 import { countryName } from "@/lib/countries";
-import type { createClient } from "@/lib/supabase/server";
-
-type Supabase = Awaited<ReturnType<typeof createClient>>;
-
-/** One exported email (public.contact_export_rows). */
-type ExportRow = {
+/** One exported email. */
+export type ExportRow = {
   email: string;
   full_name: string | null;
   company: string;
@@ -15,7 +11,7 @@ type ExportRow = {
   country_name: string | null;
   city: string | null;
   agency_type: string | null;
-  agency_ref: number;
+  agency_ref: number | null;
 };
 
 /** Column order of Instantly's lead upload template. */
@@ -64,7 +60,7 @@ export function toInstantlyCsv(rows: ExportRow[]) {
         countryName(r.country_code) ?? r.country_name,
         r.city,
         r.agency_type,
-        agencyId(r.agency_ref),
+        r.agency_ref == null ? "" : agencyId(r.agency_ref),
       ]
         .map(cell)
         .join(","),
@@ -74,24 +70,29 @@ export function toInstantlyCsv(rows: ExportRow[]) {
   return `${lines.join("\r\n")}\r\n`;
 }
 
-/** CSV download of an export batch (members of its workspace only). */
-export async function batchCsvResponse(
-  supabase: Supabase,
-  batchId: string,
-  createdAt: string,
-) {
-  const { data, error } = await supabase.rpc("contact_export_rows", {
-    p_batch_id: batchId,
+/** Rows in this many API calls of 1,000 at most (100,000 emails). */
+export const EXPORT_MAX_PAGES = 100;
+export const EXPORT_PAGE_SIZE = 1000;
+
+/**
+ * CSV download in Instantly's format. Each address appears once (the same email
+ * can belong to several agencies); the first row for it is kept.
+ */
+export function csvResponse(rows: ExportRow[], name: string) {
+  const seen = new Set<string>();
+  const unique = rows.filter((r) => {
+    const key = r.email.trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
-  if (error) return new Response(error.message, { status: 404 });
-  const rows = (data ?? []) as ExportRow[];
-  const date = createdAt.slice(0, 10);
-  return new Response(toInstantlyCsv(rows), {
+  const date = new Date().toISOString().slice(0, 10);
+  return new Response(toInstantlyCsv(unique), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="instantly-leads-${date}-${rows.length}.csv"`,
+      "Content-Disposition": `attachment; filename="${name}-${date}-${unique.length}.csv"`,
       "Cache-Control": "no-store",
-      "X-Exported-Count": String(rows.length),
+      "X-Exported-Count": String(unique.length),
     },
   });
 }

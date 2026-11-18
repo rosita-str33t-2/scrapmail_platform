@@ -3,7 +3,6 @@ import {
   Layers,
   type LucideIcon,
   Mail,
-  Send,
   ShieldCheck,
 } from "lucide-react";
 import type { Metadata } from "next";
@@ -47,25 +46,20 @@ export default async function DashboardPage() {
   const firstName = (profile.full_name || profile.email).split(" ")[0];
   const supabase = await createClient();
 
-  const [{ data: counts }, { data: exportSummary }, recent] = await Promise.all(
-    [
-      supabase
-        .rpc("dashboard_counts", { p_workspace_id: workspaceId })
-        .maybeSingle<Counts>(),
-      supabase
-        .rpc("contact_export_summary", { p_workspace_id: workspaceId })
-        .maybeSingle<{ total: number; unused: number }>(),
-      supabase
-        .from("scrape_jobs")
-        .select(
-          "id, title, status, total_tasks, done_tasks, failed_tasks, created_at",
-        )
-        .eq("workspace_id", workspaceId)
-        .order("created_at", { ascending: false })
-        .limit(8)
-        .returns<Job[]>(),
-    ],
-  );
+  const [{ data: counts }, recent] = await Promise.all([
+    supabase
+      .rpc("dashboard_counts", { p_workspace_id: workspaceId })
+      .maybeSingle<Counts>(),
+    supabase
+      .from("scrape_jobs")
+      .select(
+        "id, title, status, total_tasks, done_tasks, failed_tasks, created_at",
+      )
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: false })
+      .limit(8)
+      .returns<Job[]>(),
+  ]);
   const number = (n: number | string | null | undefined) => Number(n ?? 0);
 
   const stats: Stat[] = [
@@ -80,13 +74,6 @@ export default async function DashboardPage() {
       label: "Email contacts",
       value: number(counts?.contacts),
       href: "/contacts",
-    },
-    {
-      icon: Send,
-      label: "Not exported yet",
-      value: number(exportSummary?.unused),
-      href: "/contacts",
-      tone: "text-success",
     },
     {
       icon: Layers,
@@ -124,8 +111,10 @@ export default async function DashboardPage() {
       {/* One strip of numbers, as on Instantly's analytics page */}
       <div
         className={cn(
-          "grid overflow-hidden rounded-lg border bg-card sm:grid-cols-2",
-          stats.length === 5 ? "xl:grid-cols-5" : "xl:grid-cols-4",
+          "grid overflow-hidden rounded-lg border bg-card",
+          stats.length === 4
+            ? "sm:grid-cols-2 xl:grid-cols-4"
+            : "sm:grid-cols-3",
         )}
       >
         {stats.map((stat) => (
