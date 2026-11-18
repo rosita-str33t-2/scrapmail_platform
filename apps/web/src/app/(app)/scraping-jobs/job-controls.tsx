@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Play, Search, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -22,16 +23,19 @@ import { cancelJob, createDiscoveryJob, createEnrichJob } from "./actions";
 export function NewJobForm() {
   const [filter, setFilter] = useState("missing_email");
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   const start = () =>
     startTransition(async () => {
       const result = await createEnrichJob(filter);
-      if (result.ok) toast.success(result.message);
-      else toast.error(result.error);
+      if (result.ok) {
+        toast.success(result.message);
+        router.push("/scraping-jobs"); // show the new job in the list
+      } else toast.error(result.error);
     });
 
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       <DropdownSelect
         label="Which agencies"
         value={filter}
@@ -71,6 +75,7 @@ export function DiscoveryForm({
   const [countries, setCountries] = useState<string[]>(MAIN_MARKETS);
   const [queries, setQueries] = useState<string[]>([...SEARCH_PHRASES]);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   const searches = countries.length * queries.length;
   const remaining = Math.max(0, searchLimit - searchUsed);
@@ -96,12 +101,14 @@ export function DiscoveryForm({
   const start = () =>
     startTransition(async () => {
       const result = await createDiscoveryJob({ source, countries, queries });
-      if (result.ok) toast.success(result.message);
-      else toast.error(result.error);
+      if (result.ok) {
+        toast.success(result.message);
+        router.push("/scraping-jobs"); // show the new job in the list
+      } else toast.error(result.error);
     });
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="space-y-5">
       <div
         role="radiogroup"
         aria-label="Discovery source"
@@ -117,18 +124,17 @@ export function DiscoveryForm({
               aria-checked={active}
               onClick={() => setSource(option.value)}
               className={cn(
-                "rounded-xl border p-4 text-left transition-all duration-200 hover:border-primary/50 active:scale-[0.99]",
-                active &&
-                  "border-primary bg-accent/60 shadow-sm ring-2 ring-primary/20",
+                "rounded-lg border bg-muted/40 p-4 text-left transition-colors duration-150 hover:border-muted-foreground/40",
+                active && "border-primary bg-primary/5 ring-1 ring-primary",
               )}
             >
-              <span className="flex items-center justify-between gap-2 font-semibold">
+              <span className="flex items-center justify-between gap-2 text-sm font-semibold">
                 {option.label}
                 <StatusBadge tone={option.free ? "success" : "info"}>
                   {option.free ? "Free" : "Free credit"}
                 </StatusBadge>
               </span>
-              <span className="mt-1 block text-sm text-muted-foreground">
+              <span className="mt-1 block text-[13px] text-muted-foreground">
                 {option.description}
               </span>
             </button>
@@ -178,10 +184,10 @@ export function DiscoveryForm({
                     )
                   }
                   className={cn(
-                    "rounded-full border px-3 py-1.5 text-sm transition-all active:scale-95",
+                    "rounded-md border px-2.5 py-1 text-[13px] transition-colors",
                     on
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "hover:border-primary/50 hover:bg-accent",
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "hover:border-muted-foreground/40 hover:bg-accent",
                   )}
                 >
                   {phrase}

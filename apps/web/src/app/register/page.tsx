@@ -11,10 +11,10 @@ export default function RegisterPage() {
       headline="Build and reach your agency database"
       description="Discover relevant agencies, extract their contact information, and run personalized email outreach — all in one place."
     >
-      <h2 className="text-3xl font-bold tracking-tight">
+      <h2 className="text-2xl font-semibold tracking-tight">
         Create your Scrap&amp;Mail account
       </h2>
-      <p className="mt-2 mb-8 text-lg text-muted-foreground">
+      <p className="mt-1.5 mb-7 text-sm text-muted-foreground">
         Start building your agency database. New accounts are reviewed by an
         administrator before access is granted.
       </p>

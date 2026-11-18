@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Inter } from "next/font/google";
+import { Figtree } from "next/font/google";
 
 import { Providers } from "@/components/providers";
 import { clientEnv } from "@/env/client";
 import "./globals.css";
 
-const inter = Inter({
+// Figtree: a free geometric sans close to the Averta font Instantly uses.
+const appFont = Figtree({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-app",
   display: "swap",
 });
 
@@ -28,7 +29,7 @@ export default function RootLayout({
 }: Readonly<{ children: ReactNode }>) {
   return (
     // suppressHydrationWarning: next-themes sets the theme class before React loads.
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang="en" className={appFont.variable} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <Providers>{children}</Providers>
       </body>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { TableFrame } from "@/components/app/data-table";
 import { LiveRefresh } from "@/components/app/live-refresh";
-import { EmptyState, PageHeader } from "@/components/app/page-header";
+import { EmptyState, PageHeader, PageTabs } from "@/components/app/page-header";
 import { StatusBadge, type Tone } from "@/components/app/status-badge";
 import { requireAdmin, type AccountStatus } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -37,8 +37,24 @@ const when = (value: string | null | undefined) =>
       })
     : "—";
 
-export default async function AdminUsersPage() {
-  const me = await requireAdmin();
+const STATUS_TABS: { value: AccountStatus | ""; label: string }[] = [
+  { value: "", label: "All users" },
+  { value: "pending", label: "Pending" },
+  { value: "approved", label: "Approved" },
+  { value: "suspended", label: "Suspended" },
+  { value: "rejected", label: "Rejected" },
+];
+
+type Props = { searchParams: Promise<{ status?: string }> };
+
+export default async function AdminUsersPage({ searchParams }: Props) {
+  const [me, { status: statusParam }] = await Promise.all([
+    requireAdmin(),
+    searchParams,
+  ]);
+  const status = STATUS_TABS.some((t) => t.value === statusParam)
+    ? (statusParam as AccountStatus)
+    : "";
   const supabase = await createClient();
   const [{ data: users }, authUsers] = await Promise.all([
     supabase
@@ -62,44 +78,62 @@ export default async function AdminUsersPage() {
       .map((u) => u.id),
   );
   const pending = users?.filter((u) => u.status === "pending").length ?? 0;
+  const countOf = (value: AccountStatus | "") =>
+    value
+      ? (users?.filter((u) => u.status === value).length ?? 0)
+      : (users?.length ?? 0);
+  const shown = status
+    ? (users ?? []).filter((u) => u.status === status)
+    : (users ?? []);
 
   return (
     <>
       <PageHeader
         title="User management"
-        description={
-          pending
-            ? `${pending} registration ${pending === 1 ? "request is" : "requests are"} waiting for review.`
-            : "Review registrations, change account status and update passwords."
+        description={pending ? `${pending} waiting for review` : undefined}
+        tabs={
+          <PageTabs
+            label="Account status"
+            tabs={STATUS_TABS.map((t) => ({
+              label: t.label,
+              href: t.value ? `/admin/users?status=${t.value}` : "/admin/users",
+              active: status === t.value,
+              count: countOf(t.value),
+            }))}
+          />
         }
         actions={<LiveRefresh tables={["profiles"]} minIntervalMs={3000} />}
       />
 
-      {!users?.length ? (
-        <EmptyState title="No users" text="No accounts have registered yet." />
+      {!shown.length ? (
+        <EmptyState
+          title="No users"
+          text={
+            status
+              ? "No accounts have this status."
+              : "No accounts have registered yet."
+          }
+        />
       ) : (
         <TableFrame>
-          <table className="w-full text-left text-sm">
-            <thead className="bg-muted text-muted-foreground">
+          <table>
+            <thead>
               <tr>
-                <th className="px-5 py-3 font-medium">Name</th>
-                <th className="px-5 py-3 font-medium">Email</th>
-                <th className="px-5 py-3 font-medium">Registered</th>
-                <th className="px-5 py-3 font-medium">Last sign-in</th>
-                <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium">Change status</th>
-                <th className="px-5 py-3 font-medium">Password</th>
+                <th className="px-5">Name</th>
+                <th className="px-5">Email</th>
+                <th className="px-5">Registered</th>
+                <th className="px-5">Last sign-in</th>
+                <th className="px-5">Status</th>
+                <th className="px-5">Change status</th>
+                <th className="px-5">Password</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
-              {users.map((user) => {
+            <tbody>
+              {shown.map((user) => {
                 const isMe = user.user_id === me.user_id;
                 return (
-                  <tr
-                    key={user.user_id}
-                    className="animate-in transition-colors fade-in hover:bg-muted/50"
-                  >
-                    <td className="px-5 py-4 font-medium">
+                  <tr key={user.user_id} className="animate-in fade-in">
+                    <td className="px-5 py-3 font-medium">
                       {user.full_name || "—"}
                       {user.platform_role === "admin" && (
                         <StatusBadge tone="info" className="ml-2">
@@ -107,7 +141,7 @@ export default async function AdminUsersPage() {
                         </StatusBadge>
                       )}
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3">
                       {user.email}
                       {unconfirmed.has(user.user_id) && (
                         <div
@@ -120,18 +154,18 @@ export default async function AdminUsersPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-5 py-4 whitespace-nowrap text-muted-foreground">
+                    <td className="px-5 py-3 whitespace-nowrap text-muted-foreground">
                       {new Date(user.created_at).toLocaleDateString("en-GB")}
                     </td>
-                    <td className="px-5 py-4 whitespace-nowrap text-muted-foreground">
+                    <td className="px-5 py-3 whitespace-nowrap text-muted-foreground">
                       {when(lastSignIn.get(user.user_id))}
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3">
                       <StatusBadge tone={TONE[user.status]}>
                         {user.status}
                       </StatusBadge>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3">
                       {isMe ? (
                         <span
                           className="text-muted-foreground"
@@ -147,7 +181,7 @@ export default async function AdminUsersPage() {
                         />
                       )}
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <ResetPasswordDialog
                           userId={user.user_id}

@@ -15,7 +15,7 @@ const TONE: Record<JobStatus, Tone> = {
 
 export function JobStatusBadge({ status }: { status: JobStatus }) {
   return (
-    <StatusBadge tone={TONE[status]} className="gap-1">
+    <StatusBadge tone={TONE[status]} dot={status !== "running"}>
       {status === "running" && <Loader2 className="size-3 animate-spin" />}
       {status}
     </StatusBadge>
@@ -36,7 +36,7 @@ export function JobProgress({
   const pct = total ? Math.round(((done + failed) / total) * 100) : 0;
   return (
     <div className="min-w-40">
-      <div className="relative h-2 overflow-hidden rounded-full bg-muted">
+      <div className="relative h-1.5 overflow-hidden rounded-full bg-accent">
         <div
           className="h-full rounded-full bg-primary transition-[width] duration-700 ease-out"
           style={{ width: `${pct}%` }}

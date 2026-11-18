@@ -8,6 +8,8 @@ import { useState } from "react";
 import { ALL_COUNTRIES, countryName, searchable } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 
+import { fieldTriggerClass, pickerSearchClass, popoverClass } from "./styles";
+
 /** Searchable multi-select of countries, with quick presets. */
 export function MultiCountrySelect({
   value,
@@ -40,11 +42,7 @@ export function MultiCountrySelect({
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger
         disabled={disabled}
-        className={cn(
-          "group inline-flex h-10 w-72 items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm shadow-xs transition-all outline-none",
-          "hover:border-primary/50 hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/20",
-          "disabled:opacity-50 data-[state=open]:border-ring data-[state=open]:ring-[3px] data-[state=open]:ring-ring/20",
-        )}
+        className={cn(fieldTriggerClass, "w-72")}
       >
         <span className="flex min-w-0 items-center gap-2">
           <Globe className="size-4 shrink-0 text-muted-foreground" />
@@ -56,7 +54,7 @@ export function MultiCountrySelect({
         <Popover.Content
           align="start"
           sideOffset={6}
-          className="z-50 w-80 overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lg data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2"
+          className={cn(popoverClass, "w-80")}
         >
           <Command
             filter={(itemValue, search, keywords) =>
@@ -72,7 +70,7 @@ export function MultiCountrySelect({
               <Command.Input
                 autoFocus
                 placeholder="Search countries…"
-                className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                className={pickerSearchClass}
               />
             </div>
             <div className="flex flex-wrap gap-1.5 border-b px-3 py-2">
@@ -87,7 +85,7 @@ export function MultiCountrySelect({
                   key={preset.label}
                   type="button"
                   onClick={() => onChange(preset.codes)}
-                  className="rounded-full border px-2.5 py-1 text-xs transition-all hover:border-primary/50 hover:bg-accent active:scale-95"
+                  className="rounded-md border px-2 py-1 text-xs transition-colors hover:border-primary/50 hover:bg-accent"
                 >
                   {preset.label}
                 </button>
@@ -96,7 +94,7 @@ export function MultiCountrySelect({
                 <button
                   type="button"
                   onClick={() => onChange([])}
-                  className="rounded-full px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                 >
                   Clear ({value.length})
                 </button>

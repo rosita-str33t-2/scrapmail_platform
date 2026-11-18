@@ -8,6 +8,8 @@ import { type ReactNode, useState } from "react";
 import { searchable } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 
+import { fieldTriggerClass, pickerSearchClass, popoverClass } from "./styles";
+
 export type ComboboxOption = {
   value: string;
   label: string;
@@ -48,12 +50,7 @@ export function Combobox({
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger
         aria-label={label}
-        className={cn(
-          "group inline-flex h-10 items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm shadow-xs transition-all outline-none",
-          "hover:border-primary/50 hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/20",
-          "data-[state=open]:border-ring data-[state=open]:ring-[3px] data-[state=open]:ring-ring/20",
-          className,
-        )}
+        className={cn(fieldTriggerClass, className)}
       >
         <span className="flex min-w-0 items-center gap-2">
           {icon}
@@ -66,11 +63,7 @@ export function Combobox({
         <Popover.Content
           align="start"
           sideOffset={6}
-          className={cn(
-            "z-50 w-72 overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lg",
-            "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2",
-            "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
-          )}
+          className={cn(popoverClass, "w-72")}
         >
           <Command
             filter={(itemValue, search, keywords) => {
@@ -85,7 +78,7 @@ export function Combobox({
               <Command.Input
                 autoFocus
                 placeholder={searchPlaceholder}
-                className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                className={pickerSearchClass}
               />
             </div>
             <Command.List className="max-h-80 overflow-y-auto overscroll-contain p-1">

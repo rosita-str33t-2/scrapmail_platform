@@ -10,7 +10,12 @@ import {
 } from "@/components/app/data-table";
 import { ExportDialog } from "@/components/app/export-dialog";
 import { LiveRefresh } from "@/components/app/live-refresh";
-import { EmptyState, PageHeader } from "@/components/app/page-header";
+import {
+  EmptyState,
+  PageHeader,
+  PageTabs,
+  Toolbar,
+} from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status-badge";
 import { requireWorkspace } from "@/lib/auth/workspace";
 import { countryName } from "@/lib/countries";
@@ -46,6 +51,19 @@ const STATUS_BADGE: Record<
 };
 
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
+
+/** Current URL with some parameters changed (and the page reset). */
+function hrefWith(
+  params: Record<string, string | undefined>,
+  changes: Record<string, string>,
+) {
+  const next = new URLSearchParams();
+  for (const [key, value] of Object.entries({ ...params, ...changes })) {
+    if (value && key !== "page") next.set(key, value);
+  }
+  const query = next.toString();
+  return query ? `/contacts?${query}` : "/contacts";
+}
 
 export default async function ContactsPage({ searchParams }: Props) {
   const { workspaceId } = await requireWorkspace();
@@ -115,21 +133,35 @@ export default async function ContactsPage({ searchParams }: Props) {
     <>
       <PageHeader
         title="Contacts"
-        description={`${total.toLocaleString()} valid email contacts${filtered ? " match your filters" : ""}.`}
+        description={`${total.toLocaleString()}${filtered ? " matching" : " valid emails"}`}
+        tabs={
+          <PageTabs
+            label="Contact type"
+            tabs={[
+              { label: "All contacts", value: "" },
+              { label: "Personal", value: "person" },
+              { label: "General (info@…)", value: "general" },
+            ].map((t) => ({
+              label: t.label,
+              href: hrefWith(params, { kind: t.value }),
+              active: kind === t.value,
+            }))}
+          />
+        }
         actions={
-          <div className="flex items-center gap-3">
+          <>
             <LiveRefresh
               tables={["scrape_jobs"]}
               workspaceId={workspaceId}
               minIntervalMs={10000}
             />
             <ExportDialog />
-          </div>
+          </>
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <SearchInput placeholder="Search email or name…" className="max-w-md" />
+      <Toolbar>
+        <SearchInput placeholder="Search email or name…" />
         <CountriesFilter
           counts={Object.fromEntries(
             countryCounts
@@ -140,7 +172,7 @@ export default async function ContactsPage({ searchParams }: Props) {
         />
         <FilterSelect
           param="relevance"
-          label="Agency relevance"
+          label="Relevance"
           options={[
             { value: "", label: "Any agency" },
             { value: "abc", label: "Relevant agencies (A–C)" },
@@ -158,22 +190,13 @@ export default async function ContactsPage({ searchParams }: Props) {
             { value: "website", label: "Agency website" },
           ]}
         />
-        <FilterSelect
-          param="kind"
-          label="Type"
-          options={[
-            { value: "", label: "All types" },
-            { value: "person", label: "Personal addresses" },
-            { value: "general", label: "General addresses (info@…)" },
-          ]}
-        />
         <Pagination
           page={page}
           pageSize={size}
           total={total}
           className="ml-auto"
         />
-      </div>
+      </Toolbar>
 
       {!contacts?.length ? (
         <EmptyState
@@ -182,22 +205,22 @@ export default async function ContactsPage({ searchParams }: Props) {
         />
       ) : (
         <TableFrame>
-          <table className="w-full text-left text-sm">
-            <thead className="bg-muted text-muted-foreground">
+          <table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 font-medium">Email</th>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Title</th>
-                <th className="px-4 py-3 font-medium">Agency</th>
-                <th className="px-4 py-3 font-medium">Country</th>
-                <th className="px-4 py-3 font-medium">Source</th>
+                <th className="px-4">Email</th>
+                <th className="px-4">Name</th>
+                <th className="px-4">Title</th>
+                <th className="px-4">Agency</th>
+                <th className="px-4">Country</th>
+                <th className="px-4">Source</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody>
               {contacts.map((c) => (
-                <tr key={c.id} className="transition-colors hover:bg-muted/50">
+                <tr key={c.id}>
                   <td className="px-4 py-3">
-                    {c.email}
+                    <span className="font-medium">{c.email}</span>
                     {c.is_role_address && (
                       <StatusBadge tone="neutral" className="ml-2">
                         general
@@ -228,7 +251,7 @@ export default async function ContactsPage({ searchParams }: Props) {
                     {c.agencies ? (
                       <Link
                         href={`/agencies/${c.agencies.id}`}
-                        className="text-primary hover:underline"
+                        className="hover:text-primary hover:underline"
                       >
                         {c.agencies.name}
                       </Link>

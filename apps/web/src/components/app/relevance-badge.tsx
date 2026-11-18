@@ -23,7 +23,11 @@ export function RelevanceBadge({
   const title = `${level} · ${info?.label ?? ""}${keywords.length ? `\nMatched: ${keywords.join(", ")}` : ""}`;
   return (
     <span title={title} className="cursor-help">
-      <StatusBadge tone={info?.tone ?? "neutral"} className="normal-case">
+      <StatusBadge
+        tone={info?.tone ?? "neutral"}
+        className="normal-case"
+        dot={false}
+      >
         <span className="font-bold">{level}</span>
         {showLabel && info && <span className="ml-1.5">{info.label}</span>}
       </StatusBadge>

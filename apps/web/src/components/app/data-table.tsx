@@ -53,7 +53,7 @@ export function SearchInput({
   };
 
   return (
-    <div className={cn("relative min-w-56 flex-1", className)}>
+    <div className={cn("relative w-full sm:w-64", className)}>
       <Search
         aria-hidden="true"
         className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
@@ -64,7 +64,7 @@ export function SearchInput({
         onChange={(e) => update(e.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="h-10 w-full rounded-lg border border-input bg-background pr-9 pl-9 text-sm transition-colors outline-none placeholder:text-muted-foreground/80 hover:border-primary/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/20 [&::-webkit-search-cancel-button]:hidden"
+        className="h-9 w-full rounded-md border border-input bg-muted pr-8 pl-9 text-sm transition-colors outline-none placeholder:text-muted-foreground hover:border-muted-foreground/40 focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/20 [&::-webkit-search-cancel-button]:hidden"
       />
       {pending ? (
         <Loader2 className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
@@ -104,6 +104,7 @@ export function FilterSelect({
       onValueChange={(value) => setParams({ [param]: value || null })}
       options={options}
       className={className}
+      variant="filter"
     />
   );
 }
@@ -139,19 +140,21 @@ export function Pagination({
       disabled={disabled || pending}
       aria-label={label}
       title={label}
-      className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-all hover:border-primary/50 hover:text-foreground active:scale-90 disabled:pointer-events-none disabled:opacity-40"
+      className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
     >
       {icon}
     </button>
   );
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-3 text-sm", className)}>
+    <div
+      className={cn("flex flex-wrap items-center gap-2 text-[13px]", className)}
+    >
       <span className="text-muted-foreground tabular-nums">
         {from.toLocaleString()}–{to.toLocaleString()} of{" "}
         {total.toLocaleString()}
       </span>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
         {button(
           1,
           page <= 1,
@@ -164,7 +167,7 @@ export function Pagination({
           "Previous page",
           <ChevronLeft className="size-4" />,
         )}
-        <span className="min-w-20 text-center tabular-nums">
+        <span className="min-w-16 text-center text-muted-foreground tabular-nums">
           {page} / {pages.toLocaleString()}
         </span>
         {button(
@@ -219,14 +222,14 @@ export function SortHeader({
       type="button"
       onClick={() => setParams({ sort: `${field}.${next}` })}
       className={cn(
-        "group inline-flex items-center gap-1 font-medium transition-colors hover:text-foreground",
-        active && "text-foreground",
+        "group inline-flex items-center gap-1 tracking-wider uppercase transition-colors hover:text-primary",
+        active && "text-primary",
       )}
     >
       {children}
       <Icon
         className={cn(
-          "size-3.5 transition-opacity",
+          "size-3 transition-opacity",
           active ? "opacity-100" : "opacity-40 group-hover:opacity-100",
         )}
       />
@@ -234,10 +237,28 @@ export function SortHeader({
   );
 }
 
-/** Scrollable table area with a sticky header, sized to the viewport. */
-export function TableFrame({ children }: { children: ReactNode }) {
+/**
+ * Scrollable table card with a sticky header, sized to the viewport. Instantly
+ * style: hairline rows, small uppercase bold headers, subtle row hover.
+ */
+export function TableFrame({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="max-h-[calc(100dvh-17rem)] min-h-64 overflow-auto rounded-xl border bg-card shadow-sm [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:shadow-[0_1px_0_var(--border)]">
+    <div
+      className={cn(
+        "max-h-[calc(100dvh-11rem)] min-h-64 overflow-auto rounded-lg border bg-card",
+        "[&_table]:w-full [&_table]:text-left [&_table]:text-sm",
+        "[&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-card [&_thead]:shadow-[0_1px_0_var(--border)]",
+        "[&_th]:h-10 [&_th]:py-0 [&_th]:align-middle [&_th]:text-[11px] [&_th]:font-semibold [&_th]:tracking-wider [&_th]:whitespace-nowrap [&_th]:text-foreground [&_th]:uppercase",
+        "[&_tbody>tr]:border-b [&_tbody>tr]:transition-colors [&_tbody>tr:hover]:bg-accent/40 [&_tbody>tr:last-child]:border-b-0",
+        className,
+      )}
+    >
       {children}
     </div>
   );

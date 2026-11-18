@@ -38,8 +38,10 @@ export default async function PendingPage() {
       description="Find relevant agencies, extract their contact information, and reach out with personalized emails — all in one place."
     >
       <Icon aria-hidden="true" className="size-10 text-primary" />
-      <h2 className="mt-6 text-3xl font-bold tracking-tight">{copy.title}</h2>
-      <p className="mt-3 text-lg text-muted-foreground">{copy.text}</p>
+      <h2 className="mt-6 text-2xl font-semibold tracking-tight">
+        {copy.title}
+      </h2>
+      <p className="mt-2 text-sm text-muted-foreground">{copy.text}</p>
       <p className="mt-6 text-sm text-muted-foreground">
         Signed in as <span className="font-medium">{profile.email}</span>
       </p>
