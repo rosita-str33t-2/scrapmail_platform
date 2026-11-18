@@ -73,26 +73,49 @@ export function toInstantlyCsv(rows: ExportRow[]) {
 /** Rows in this many API calls of 1,000 at most (100,000 emails). */
 export const EXPORT_MAX_PAGES = 100;
 export const EXPORT_PAGE_SIZE = 1000;
+export const EXPORT_MAX_EMAILS = EXPORT_MAX_PAGES * EXPORT_PAGE_SIZE;
+
+/** "?limit=500" -> 500; missing or invalid -> every email. */
+export function exportLimit(value: string | null) {
+  const n = Number.parseInt(value ?? "", 10);
+  return Number.isInteger(n) && n > 0
+    ? Math.min(n, EXPORT_MAX_EMAILS)
+    : EXPORT_MAX_EMAILS;
+}
 
 /**
- * CSV download in Instantly's format. Each address appears once (the same email
- * can belong to several agencies); the first row for it is kept.
+ * Collects rows for the CSV, each address once (the same email can belong to
+ * several agencies; the first row for it is kept), up to `limit` emails.
  */
-export function csvResponse(rows: ExportRow[], name: string) {
+export function exportCollector(limit: number) {
   const seen = new Set<string>();
-  const unique = rows.filter((r) => {
-    const key = r.email.trim().toLowerCase();
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const rows: ExportRow[] = [];
+  return {
+    rows,
+    /** Adds the row unless its address is already in; true once the limit is reached. */
+    add(row: ExportRow) {
+      const key = row.email.toLowerCase();
+      if (key && !seen.has(key) && rows.length < limit) {
+        seen.add(key);
+        rows.push(row);
+      }
+      return rows.length >= limit;
+    },
+    get full() {
+      return rows.length >= limit;
+    },
+  };
+}
+
+/** CSV download in Instantly's format. */
+export function csvResponse(rows: ExportRow[], name: string) {
   const date = new Date().toISOString().slice(0, 10);
-  return new Response(toInstantlyCsv(unique), {
+  return new Response(toInstantlyCsv(rows), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${name}-${date}-${unique.length}.csv"`,
+      "Content-Disposition": `attachment; filename="${name}-${date}-${rows.length}.csv"`,
       "Cache-Control": "no-store",
-      "X-Exported-Count": String(unique.length),
+      "X-Exported-Count": String(rows.length),
     },
   });
 }

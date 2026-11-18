@@ -6,7 +6,8 @@ import {
   csvResponse,
   EXPORT_MAX_PAGES,
   EXPORT_PAGE_SIZE,
-  type ExportRow,
+  exportCollector,
+  exportLimit,
 } from "@/lib/instantly";
 
 /** The emails of every agency that matches the list filters, as an Instantly CSV. */
@@ -16,8 +17,11 @@ export async function GET(request: NextRequest) {
     Object.fromEntries(request.nextUrl.searchParams),
   );
 
-  const rows: ExportRow[] = [];
-  for (let page = 0; page < EXPORT_MAX_PAGES; page++) {
+  // "limit": how many emails to export (the first ones of the list); all if not set.
+  const out = exportCollector(
+    exportLimit(request.nextUrl.searchParams.get("limit")),
+  );
+  for (let page = 0; page < EXPORT_MAX_PAGES && !out.full; page++) {
     const { data, error } = await queryAgencies(workspaceId, filters, {
       limit: EXPORT_PAGE_SIZE,
       offset: page * EXPORT_PAGE_SIZE,
@@ -32,7 +36,7 @@ export async function GET(request: NextRequest) {
     for (const a of data ?? []) {
       for (const c of a.agency_contacts) {
         if (!c.email) continue;
-        rows.push({
+        out.add({
           email: c.email.trim(),
           full_name: c.full_name ?? null,
           company: a.name,
@@ -48,5 +52,5 @@ export async function GET(request: NextRequest) {
     if ((data?.length ?? 0) < EXPORT_PAGE_SIZE) break;
   }
 
-  return csvResponse(rows, "instantly-agencies");
+  return csvResponse(out.rows, "instantly-agencies");
 }

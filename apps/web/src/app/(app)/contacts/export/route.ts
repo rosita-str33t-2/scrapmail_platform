@@ -6,7 +6,8 @@ import {
   csvResponse,
   EXPORT_MAX_PAGES,
   EXPORT_PAGE_SIZE,
-  type ExportRow,
+  exportCollector,
+  exportLimit,
 } from "@/lib/instantly";
 import { createClient } from "@/lib/supabase/server";
 
@@ -32,8 +33,11 @@ export async function GET(request: NextRequest) {
   );
   const supabase = await createClient();
 
-  const rows: ExportRow[] = [];
-  for (let page = 0; page < EXPORT_MAX_PAGES; page++) {
+  // "limit": how many emails to export (the first ones of the list); all if not set.
+  const out = exportCollector(
+    exportLimit(request.nextUrl.searchParams.get("limit")),
+  );
+  for (let page = 0; page < EXPORT_MAX_PAGES && !out.full; page++) {
     const { data, error } = await queryContacts(
       supabase,
       workspaceId,
@@ -51,7 +55,7 @@ export async function GET(request: NextRequest) {
     }
     for (const c of data ?? []) {
       if (!c.email) continue;
-      rows.push({
+      out.add({
         email: c.email.trim(),
         full_name: c.full_name,
         company: c.agencies?.name ?? "",
@@ -66,5 +70,5 @@ export async function GET(request: NextRequest) {
     if ((data?.length ?? 0) < EXPORT_PAGE_SIZE) break;
   }
 
-  return csvResponse(rows, "instantly-contacts");
+  return csvResponse(out.rows, "instantly-contacts");
 }

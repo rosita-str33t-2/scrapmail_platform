@@ -94,6 +94,7 @@ export default async function AgenciesPage({ searchParams }: Props) {
             <ExportButton
               href={`/agencies/export${exportQuery ? `?${exportQuery}` : ""}`}
               count={total}
+              unit="agencies"
             />
           </>
         }

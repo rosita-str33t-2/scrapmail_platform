@@ -136,6 +136,7 @@ export default async function ContactsPage({ searchParams }: Props) {
             <ExportButton
               href={`/contacts/export${exportQuery ? `?${exportQuery}` : ""}`}
               count={total}
+              unit="contacts"
             />
           </>
         }
