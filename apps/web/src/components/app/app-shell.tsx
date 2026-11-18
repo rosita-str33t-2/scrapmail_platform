@@ -1,237 +1,119 @@
 "use client";
 
-import {
-  CircleUserRound,
-  LogOut,
-  Menu,
-  PanelLeftClose,
-  PanelLeftOpen,
-  X,
-} from "lucide-react";
-import {
-  type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { Menu, X } from "lucide-react";
+import Link from "next/link";
+import { Tooltip } from "radix-ui";
+import { type ReactNode, useState } from "react";
 
 import { Logo } from "@/components/brand/logo";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
-import {
-  SIDEBAR_COLLAPSED_COOKIE,
-  SIDEBAR_DEFAULT_WIDTH,
-  SIDEBAR_MAX_WIDTH as MAX_WIDTH,
-  SIDEBAR_MIN_WIDTH as MIN_WIDTH,
-  SIDEBAR_MINI_WIDTH as MINI_WIDTH,
-  SIDEBAR_WIDTH_COOKIE,
-} from "./sidebar-config";
-import { SidebarNav } from "./sidebar-nav";
-
-function saveCookie(name: string, value: string) {
-  document.cookie = `${name}=${value}; path=/; max-age=31536000; samesite=lax`;
-}
+import { DrawerNav, RailNav, RailTooltip } from "./sidebar-nav";
+import { UserMenu } from "./user-menu";
 
 type AppShellProps = {
   children: ReactNode;
   displayName: string;
+  email: string;
   isAdmin: boolean;
-  initialCollapsed: boolean;
-  initialWidth: number;
   signOut: () => Promise<void>;
 };
 
+/**
+ * Layout of the signed-in app, modelled on Instantly: a narrow icon rail on the
+ * left (labels in tooltips) and a top bar drawn by each page (PageHeader).
+ * On phones the rail becomes a drawer opened from a small top bar.
+ */
 export function AppShell({
   children,
   displayName,
+  email,
   isAdmin,
-  initialCollapsed,
-  initialWidth,
   signOut,
 }: AppShellProps) {
-  const [collapsed, setCollapsed] = useState(initialCollapsed);
-  const [width, setWidth] = useState(initialWidth);
-  const [resizing, setResizing] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const widthRef = useRef(width);
-
-  const toggleCollapsed = useCallback(() => {
-    setCollapsed((value) => {
-      saveCookie(SIDEBAR_COLLAPSED_COOKIE, value ? "0" : "1");
-      return !value;
-    });
-  }, []);
-
-  // Ctrl/Cmd + B toggles the sidebar.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "b") {
-        event.preventDefault();
-        toggleCollapsed();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [toggleCollapsed]);
-
-  // Drag the sidebar edge to resize it.
-  const startResize = (event: ReactPointerEvent) => {
-    event.preventDefault();
-    setResizing(true);
-    const onMove = (e: PointerEvent) => {
-      const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, e.clientX));
-      widthRef.current = next;
-      setWidth(next);
-    };
-    const onUp = () => {
-      setResizing(false);
-      saveCookie(SIDEBAR_WIDTH_COOKIE, String(Math.round(widthRef.current)));
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-  };
-
-  const resetWidth = () => {
-    widthRef.current = SIDEBAR_DEFAULT_WIDTH;
-    setWidth(SIDEBAR_DEFAULT_WIDTH);
-    saveCookie(SIDEBAR_WIDTH_COOKIE, String(SIDEBAR_DEFAULT_WIDTH));
-  };
-
-  const desktopWidth = collapsed ? MINI_WIDTH : width;
 
   return (
-    <div
-      className={cn(
-        "flex min-h-dvh",
-        resizing && "cursor-col-resize select-none",
-      )}
-      style={{ "--sidebar-width": `${desktopWidth}px` } as CSSProperties}
-    >
-      {/* Mobile overlay */}
-      <div
-        aria-hidden="true"
-        onClick={() => setMobileOpen(false)}
-        className={cn(
-          "fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] transition-opacity duration-300 md:hidden",
-          mobileOpen ? "opacity-100" : "pointer-events-none opacity-0",
-        )}
-      />
-
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-sidebar-border bg-sidebar py-6 transition-transform duration-300 ease-out",
-          "md:sticky md:top-0 md:z-auto md:h-dvh md:w-(--sidebar-width) md:translate-x-0 md:transition-[width]",
-          resizing && "md:transition-none",
-          collapsed ? "md:items-center md:px-2" : "px-4",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-        )}
-      >
-        <div
-          className={cn(
-            "flex items-center justify-between",
-            collapsed ? "md:justify-center" : "px-2",
-          )}
-        >
-          <Logo markOnly={collapsed} className="hidden md:inline-flex" />
-          <Logo className="md:hidden" />
-          <button
-            type="button"
-            onClick={() => setMobileOpen(false)}
-            className="rounded-lg p-2 text-muted-foreground hover:bg-background/60 md:hidden"
-            aria-label="Close menu"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
-
-        <div className="md:hidden">
-          <SidebarNav
-            isAdmin={isAdmin}
-            collapsed={false}
-            onNavigate={() => setMobileOpen(false)}
-          />
-        </div>
-        <div className="hidden flex-1 md:flex md:flex-col">
-          <SidebarNav isAdmin={isAdmin} collapsed={collapsed} />
-        </div>
-
-        {!collapsed && (
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize sidebar (double-click to reset)"
-            onPointerDown={startResize}
-            onDoubleClick={resetWidth}
-            className="absolute inset-y-0 -right-1 hidden w-2 cursor-col-resize md:block"
-          >
-            <span
-              className={cn(
-                "mx-auto block h-full w-0.5 transition-colors duration-200 hover:bg-primary/50",
-                resizing && "bg-primary",
-              )}
+    <Tooltip.Provider delayDuration={150} skipDelayDuration={300}>
+      <div className="min-h-dvh md:pl-12">
+        {/* Desktop icon rail */}
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-12 flex-col items-center border-r border-sidebar-border bg-sidebar py-3 md:flex">
+          <RailTooltip label="Scrap&Mail">
+            <Link
+              href="/dashboard"
+              aria-label="Scrap&Mail home"
+              className="flex size-8 items-center justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <Logo markOnly size="sm" />
+            </Link>
+          </RailTooltip>
+          <RailNav isAdmin={isAdmin} />
+          <div className="mt-auto">
+            <UserMenu
+              displayName={displayName}
+              email={email}
+              signOut={signOut}
             />
           </div>
-        )}
-      </aside>
+        </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/85 px-4 backdrop-blur md:px-8">
+        {/* Mobile top bar */}
+        <div className="sticky top-0 z-40 flex h-12 items-center gap-2 border-b border-sidebar-border bg-sidebar px-3 md:hidden">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
+            className="rounded-md p-1.5 text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
             aria-label="Open menu"
           >
             <Menu className="size-5" />
           </button>
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            className="hidden rounded-lg p-2 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90 md:inline-flex"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={`${collapsed ? "Expand" : "Collapse"} sidebar (Ctrl+B)`}
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="size-5" />
-            ) : (
-              <PanelLeftClose className="size-5" />
-            )}
-          </button>
-
-          <div className="ml-auto flex items-center gap-2 sm:gap-4">
-            <ThemeToggle />
-            <span className="flex items-center gap-2 text-sm font-medium">
-              <CircleUserRound
-                aria-hidden="true"
-                className="size-7 text-muted-foreground"
-              />
-              <span className="hidden max-w-48 truncate sm:inline">
-                {displayName}
-              </span>
-            </span>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-95"
-                title="Sign out"
-              >
-                <LogOut aria-hidden="true" className="size-4" />
-                <span className="hidden sm:inline">Sign out</span>
-              </button>
-            </form>
+          <Logo size="sm" />
+          <div className="ml-auto">
+            <UserMenu
+              displayName={displayName}
+              email={email}
+              signOut={signOut}
+              side="bottom"
+            />
           </div>
-        </header>
-        <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
-          {children}
-        </main>
+        </div>
+
+        {/* Mobile drawer */}
+        <div
+          aria-hidden="true"
+          onClick={() => setMobileOpen(false)}
+          className={cn(
+            "fixed inset-0 z-50 bg-black/60 transition-opacity duration-200 md:hidden",
+            mobileOpen ? "opacity-100" : "pointer-events-none opacity-0",
+          )}
+        />
+        <aside
+          aria-label="Menu"
+          inert={!mobileOpen}
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 w-64 border-r border-sidebar-border bg-sidebar p-4 transition-transform duration-200 ease-out md:hidden",
+            mobileOpen ? "translate-x-0" : "-translate-x-full",
+          )}
+        >
+          <div className="flex items-center justify-between">
+            <Logo size="sm" />
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="rounded-md p-1.5 text-sidebar-foreground hover:bg-sidebar-accent"
+              aria-label="Close menu"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
+          <DrawerNav
+            isAdmin={isAdmin}
+            onNavigate={() => setMobileOpen(false)}
+          />
+        </aside>
+
+        <main className="min-w-0 px-4 pb-10 md:px-6">{children}</main>
       </div>
-    </div>
+    </Tooltip.Provider>
   );
 }

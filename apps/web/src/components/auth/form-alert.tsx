@@ -12,7 +12,7 @@ export function FormAlert({
     <p
       role={error ? "alert" : "status"}
       className={cn(
-        "rounded-lg px-4 py-3 text-sm",
+        "rounded-md px-3.5 py-2.5 text-sm",
         error
           ? "bg-destructive/10 text-destructive"
           : "bg-success-surface text-success",

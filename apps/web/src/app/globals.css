@@ -5,100 +5,103 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Design tokens. Light values sampled from the approved designs
- * (design/login.png, register.png, dashboard1.png); dark values derived from them.
+ * Design tokens, modelled on the Instantly app: a dark-first, flat UI with a
+ * narrow icon rail, hairline borders, uppercase table headers and one bright
+ * blue accent. Dark values were sampled from an Instantly screenshot.
  */
 :root {
   color-scheme: light;
-  --radius: 0.625rem;
+  --radius: 0.5rem;
 
   --background: #ffffff;
-  --foreground: #111827;
+  --foreground: #16181d;
   --card: #ffffff;
-  --card-foreground: #111827;
+  --card-foreground: #16181d;
   --popover: #ffffff;
-  --popover-foreground: #111827;
+  --popover-foreground: #16181d;
 
-  --primary: #2465b3;
+  --primary: #0080ff;
+  --primary-hover: #006fe0;
   --primary-foreground: #ffffff;
-  --secondary: #f3f4f8;
-  --secondary-foreground: #111827;
-  --muted: #f3f4f8;
-  --muted-foreground: #4b5563;
-  --accent: #dce8fa;
-  --accent-foreground: #1d4f9e;
-  --destructive: #dc2626;
+  --secondary: #f3f4f6;
+  --secondary-foreground: #16181d;
+  --muted: #f5f6f8;
+  --muted-foreground: #6b6f78;
+  --accent: #eef1f5;
+  --accent-foreground: #16181d;
+  --destructive: #e5484d;
 
-  --border: #e5e7eb;
-  --input: #d1d6dd;
-  --ring: #2465b3;
+  --border: #e6e8ec;
+  --input: #dfe2e7;
+  --ring: #0080ff;
 
-  /* Brand surfaces: auth side panel and app sidebar */
-  --brand-surface: #e8f1fd;
-  --sidebar: #eaf1fe;
-  --sidebar-foreground: #111827;
-  --sidebar-accent: #ccdef7;
-  --sidebar-accent-foreground: #1d4f9e;
-  --sidebar-border: #d3e0f5;
+  /* Auth page background and the icon rail */
+  --brand-surface: #f7f8fa;
+  --sidebar: #f7f8fa;
+  --sidebar-foreground: #5f636b;
+  --sidebar-accent: #e7e9ee;
+  --sidebar-accent-foreground: #16181d;
+  --sidebar-border: #e6e8ec;
 
   /* Status colors (badges) */
-  --success-surface: #ecfdf3;
-  --success: #15803d;
-  --warning-surface: #fffbeb;
-  --warning: #b45309;
-  --danger-surface: #fef2f2;
-  --danger: #b91c1c;
-  --info-surface: #eff6ff;
-  --info: #1d4ed8;
-  --neutral-surface: #f1f5f9;
-  --neutral: #475569;
+  --success-surface: #e6f8ee;
+  --success: #12924f;
+  --warning-surface: #fff5e0;
+  --warning: #b26b00;
+  --danger-surface: #fdecec;
+  --danger: #d0353b;
+  --info-surface: #e6f2ff;
+  --info: #0068d6;
+  --neutral-surface: #f0f1f4;
+  --neutral: #5f636b;
 }
 
 .dark {
   color-scheme: dark;
 
-  --background: #0b1220;
-  --foreground: #e5e9f0;
-  --card: #111a2b;
-  --card-foreground: #e5e9f0;
-  --popover: #111a2b;
-  --popover-foreground: #e5e9f0;
+  --background: #0f0f10;
+  --foreground: #f1f1f2;
+  --card: #171718;
+  --card-foreground: #f1f1f2;
+  --popover: #1c1c1e;
+  --popover-foreground: #f1f1f2;
 
-  --primary: #3a78cf;
+  --primary: #0080ff;
+  --primary-hover: #1a8dff;
   --primary-foreground: #ffffff;
-  --secondary: #1a2538;
-  --secondary-foreground: #e5e9f0;
-  --muted: #172133;
-  --muted-foreground: #9aa6b8;
-  --accent: #1b2c48;
-  --accent-foreground: #9cc3f5;
-  --destructive: #ef4444;
+  --secondary: #222224;
+  --secondary-foreground: #f1f1f2;
+  --muted: #1a1a1b;
+  --muted-foreground: #8d9097;
+  --accent: #28282a;
+  --accent-foreground: #f1f1f2;
+  --destructive: #f2555a;
 
-  --border: #243047;
-  --input: #2f3d57;
-  --ring: #5b9bec;
+  --border: #2c2d31;
+  --input: #313133;
+  --ring: #0080ff;
 
-  --brand-surface: #0f1a2e;
-  --sidebar: #0e1626;
-  --sidebar-foreground: #dbe3ee;
-  --sidebar-accent: #1c2d4a;
-  --sidebar-accent-foreground: #a9cbf7;
-  --sidebar-border: #1e2a40;
+  --brand-surface: #0f0f10;
+  --sidebar: #171718;
+  --sidebar-foreground: #a3a6ad;
+  --sidebar-accent: #28282a;
+  --sidebar-accent-foreground: #f1f1f2;
+  --sidebar-border: #2c2d31;
 
-  --success-surface: #0f2a1c;
-  --success: #6ee7a0;
-  --warning-surface: #2e2210;
-  --warning: #fcd34d;
-  --danger-surface: #341517;
-  --danger: #fca5a5;
-  --info-surface: #13233f;
-  --info: #93c5fd;
-  --neutral-surface: #1c2638;
-  --neutral: #a8b3c4;
+  --success-surface: #13291f;
+  --success: #05df72;
+  --warning-surface: #2b2312;
+  --warning: #fbbf3c;
+  --danger-surface: #2e1718;
+  --danger: #ff7a7f;
+  --info-surface: #0f2238;
+  --info: #4da6ff;
+  --neutral-surface: #232325;
+  --neutral: #a3a6ad;
 }
 
 @theme inline {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-app), ui-sans-serif, system-ui, sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -107,6 +110,7 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -139,6 +143,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
 }
 
 @layer base {
@@ -147,6 +152,16 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* Thin, quiet scrollbars like the Instantly app. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(
+        in oklab,
+        var(--muted-foreground) 35%,
+        transparent
+      )
+      transparent;
   }
   /* Everything that can be clicked shows the hand cursor (Tailwind 4 resets it). */
   button,

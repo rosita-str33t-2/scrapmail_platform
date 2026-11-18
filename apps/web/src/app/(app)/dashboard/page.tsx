@@ -1,4 +1,11 @@
-import { Building2, Layers, Mail, ShieldCheck } from "lucide-react";
+import {
+  Building2,
+  Layers,
+  type LucideIcon,
+  Mail,
+  Send,
+  ShieldCheck,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -10,9 +17,10 @@ import {
   JobStatusBadge,
 } from "@/components/app/job-status";
 import { LiveRefresh } from "@/components/app/live-refresh";
-import { EmptyState } from "@/components/app/page-header";
+import { EmptyState, PageHeader } from "@/components/app/page-header";
 import { requireWorkspace } from "@/lib/auth/workspace";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -23,6 +31,7 @@ type Job = {
   total_tasks: number;
   done_tasks: number;
   failed_tasks: number;
+  created_at: string;
 };
 
 type Counts = {
@@ -38,74 +47,98 @@ export default async function DashboardPage() {
   const firstName = (profile.full_name || profile.email).split(" ")[0];
   const supabase = await createClient();
 
-  // All four numbers come from one database call.
-  const [{ data: counts }, recent] = await Promise.all([
-    supabase
-      .rpc("dashboard_counts", { p_workspace_id: workspaceId })
-      .maybeSingle<Counts>(),
-    supabase
-      .from("scrape_jobs")
-      .select("id, title, status, total_tasks, done_tasks, failed_tasks")
-      .eq("workspace_id", workspaceId)
-      .order("created_at", { ascending: false })
-      .limit(5)
-      .returns<Job[]>(),
-  ]);
+  const [{ data: counts }, { data: exportSummary }, recent] = await Promise.all(
+    [
+      supabase
+        .rpc("dashboard_counts", { p_workspace_id: workspaceId })
+        .maybeSingle<Counts>(),
+      supabase
+        .rpc("contact_export_summary", { p_workspace_id: workspaceId })
+        .maybeSingle<{ total: number; unused: number }>(),
+      supabase
+        .from("scrape_jobs")
+        .select(
+          "id, title, status, total_tasks, done_tasks, failed_tasks, created_at",
+        )
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: false })
+        .limit(8)
+        .returns<Job[]>(),
+    ],
+  );
   const number = (n: number | string | null | undefined) => Number(n ?? 0);
+
+  const stats: Stat[] = [
+    {
+      icon: Building2,
+      label: "Total agencies",
+      value: number(counts?.agencies),
+      href: "/agencies",
+    },
+    {
+      icon: Mail,
+      label: "Email contacts",
+      value: number(counts?.contacts),
+      href: "/contacts",
+    },
+    {
+      icon: Send,
+      label: "Not exported yet",
+      value: number(exportSummary?.unused),
+      href: "/contacts",
+      tone: "text-success",
+    },
+    {
+      icon: Layers,
+      label: "Active scraping jobs",
+      value: number(counts?.active_jobs),
+      href: "/scraping-jobs",
+    },
+    ...(isAdmin
+      ? [
+          {
+            icon: ShieldCheck,
+            label: "Pending approvals",
+            value: number(counts?.pending_users),
+            href: "/admin/users",
+            tone: number(counts?.pending_users) ? "text-warning" : undefined,
+          },
+        ]
+      : []),
+  ];
 
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-            Welcome back, {firstName}!
-          </h1>
-          <p className="mt-2 text-lg text-muted-foreground">
-            Here&apos;s an overview of your Scrap&amp;Mail activity.
-          </p>
-        </div>
-        <LiveRefresh
-          tables={isAdmin ? ["scrape_jobs", "profiles"] : ["scrape_jobs"]}
-          workspaceId={workspaceId}
-          minIntervalMs={5000}
-        />
-      </div>
-
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          icon={Building2}
-          label="Total Agencies"
-          value={number(counts?.agencies)}
-          href="/agencies"
-        />
-        <StatCard
-          icon={Mail}
-          label="Email Contacts"
-          value={number(counts?.contacts)}
-          href="/contacts"
-        />
-        <StatCard
-          icon={Layers}
-          label="Active Scraping Jobs"
-          value={number(counts?.active_jobs)}
-          href="/scraping-jobs"
-        />
-        {isAdmin && (
-          <StatCard
-            icon={ShieldCheck}
-            label="Pending Approvals"
-            value={number(counts?.pending_users)}
-            href="/admin/users"
+      <PageHeader
+        title="Dashboard"
+        description={`Welcome back, ${firstName}`}
+        actions={
+          <LiveRefresh
+            tables={isAdmin ? ["scrape_jobs", "profiles"] : ["scrape_jobs"]}
+            workspaceId={workspaceId}
+            minIntervalMs={5000}
           />
+        }
+      />
+
+      {/* One strip of numbers, as on Instantly's analytics page */}
+      <div
+        className={cn(
+          "grid overflow-hidden rounded-lg border bg-card sm:grid-cols-2",
+          stats.length === 5 ? "xl:grid-cols-5" : "xl:grid-cols-4",
         )}
+      >
+        {stats.map((stat) => (
+          <StatCell key={stat.label} {...stat} />
+        ))}
       </div>
 
-      <section className="mt-10">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold">Recent Scraping Jobs</h2>
+      <section className="mt-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[15px] font-semibold">Recent scraping jobs</h2>
           <Link
             href="/scraping-jobs"
-            className="font-medium text-primary hover:underline"
+            className="text-sm font-medium text-primary hover:underline"
           >
             View all
           </Link>
@@ -117,31 +150,35 @@ export default async function DashboardPage() {
           />
         ) : (
           <TableFrame>
-            <table className="w-full text-left text-sm">
-              <thead className="bg-muted text-muted-foreground">
+            <table>
+              <thead>
                 <tr>
-                  <th className="px-5 py-3 font-medium">Job</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 font-medium">Progress</th>
+                  <th className="px-5">Job</th>
+                  <th className="px-5">Status</th>
+                  <th className="px-5">Progress</th>
+                  <th className="px-5">Started</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody>
                 {recent.data.map((job) => (
-                  <tr
-                    key={job.id}
-                    className="transition-colors hover:bg-muted/50"
-                  >
-                    <td className="px-5 py-4 font-medium">{job.title}</td>
-                    <td className="px-5 py-4">
+                  <tr key={job.id}>
+                    <td className="px-5 py-3.5 font-medium">{job.title}</td>
+                    <td className="px-5 py-3.5">
                       <JobStatusBadge status={job.status} />
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3.5">
                       <JobProgress
                         done={job.done_tasks}
                         failed={job.failed_tasks}
                         total={job.total_tasks}
                         running={job.status === "running"}
                       />
+                    </td>
+                    <td className="px-5 py-3.5 whitespace-nowrap text-muted-foreground">
+                      {new Date(job.created_at).toLocaleString("en-GB", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
                     </td>
                   </tr>
                 ))}
@@ -154,28 +191,33 @@ export default async function DashboardPage() {
   );
 }
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  href,
-}: {
-  icon: typeof Building2;
+type Stat = {
+  icon: LucideIcon;
   label: string;
-  value: number | null;
+  value: number;
   href: string;
-}) {
+  /** Color class for the number. */
+  tone?: string;
+};
+
+function StatCell({ icon: Icon, label, value, href, tone }: Stat) {
   return (
-    <Link href={href} className="group">
-      <div className="h-full rounded-xl border bg-card p-6 shadow-sm transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:shadow-md">
-        <span className="flex size-12 items-center justify-center rounded-lg bg-accent transition-transform duration-200 group-hover:scale-110">
-          <Icon aria-hidden="true" className="size-6 text-primary" />
-        </span>
-        <p className="mt-4 text-base text-muted-foreground">{label}</p>
-        <p className="mt-1 text-4xl font-bold tracking-tight">
-          <AnimatedNumber value={value ?? 0} />
-        </p>
-      </div>
+    <Link
+      href={href}
+      className="group -mr-px -mb-px border-r border-b px-5 py-5 transition-colors hover:bg-accent/40"
+    >
+      <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+        <Icon className="size-4" strokeWidth={1.75} />
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-2 text-[28px] leading-none font-semibold tracking-tight",
+          tone,
+        )}
+      >
+        <AnimatedNumber value={value} />
+      </p>
     </Link>
   );
 }

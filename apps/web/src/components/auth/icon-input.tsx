@@ -13,9 +13,9 @@ export function IconInput({ icon: Icon, ...props }: IconInputProps) {
     <div className="relative">
       <Icon
         aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
       />
-      <Input className="pl-12" {...props} />
+      <Input className="pl-9" {...props} />
     </div>
   );
 }
@@ -27,20 +27,20 @@ export function PasswordInput({ icon: Icon, ...props }: IconInputProps) {
     <div className="relative">
       <Icon
         aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
       />
       <Input
-        className="pr-12 pl-12"
+        className="pr-10 pl-9"
         type={visible ? "text" : "password"}
         {...props}
       />
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        className="absolute top-1/2 right-3 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:text-foreground"
+        className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:text-foreground"
         aria-label={visible ? "Hide password" : "Show password"}
       >
-        {visible ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </button>
     </div>
   );

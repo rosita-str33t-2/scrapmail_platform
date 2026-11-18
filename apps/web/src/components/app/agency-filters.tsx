@@ -8,7 +8,14 @@ import { type ReactNode, useState } from "react";
 import { AGENCY_TOPICS } from "@/lib/agency-topics";
 import { ALL_COUNTRIES, countryName, searchable } from "@/lib/countries";
 import { REGIONS } from "@/lib/regions";
+import {
+  filterTriggerClass,
+  pickerSearchClass,
+  popoverClass,
+} from "@/components/ui/styles";
 import { cn } from "@/lib/utils";
+
+import { tabClass } from "./page-header";
 
 import { useUrlParams } from "./use-url-params";
 
@@ -63,13 +70,7 @@ function MultiFilter({
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger
-        className={cn(
-          "group inline-flex h-10 w-56 items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm shadow-xs transition-all outline-none",
-          "hover:border-primary/50 hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/20",
-          "data-[state=open]:border-ring data-[state=open]:ring-[3px] data-[state=open]:ring-ring/20",
-          value.length > 0 && "border-primary/60 bg-accent/40",
-          className,
-        )}
+        className={filterTriggerClass(value.length > 0, className)}
       >
         <span className="flex min-w-0 items-center gap-2">
           {icon}
@@ -77,13 +78,13 @@ function MultiFilter({
             {value.length ? summary(value) : placeholder}
           </span>
         </span>
-        <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+        <ChevronDown className="size-3.5 shrink-0 opacity-70 transition-transform duration-200 group-data-[state=open]:rotate-180" />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
           align="start"
           sideOffset={6}
-          className="z-50 w-80 overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lg data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2"
+          className={cn(popoverClass, "w-80")}
         >
           <Command
             filter={(itemValue, search, keywords) =>
@@ -100,7 +101,7 @@ function MultiFilter({
                 <Command.Input
                   autoFocus
                   placeholder={searchPlaceholder}
-                  className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  className={pickerSearchClass}
                 />
               </div>
             )}
@@ -111,7 +112,7 @@ function MultiFilter({
                     key={preset.label}
                     type="button"
                     onClick={() => apply(preset.values)}
-                    className="rounded-full border px-2.5 py-1 text-xs transition-all hover:border-primary/50 hover:bg-accent active:scale-95"
+                    className="rounded-md border px-2 py-1 text-xs transition-colors hover:border-primary/50 hover:bg-accent"
                   >
                     {preset.label}
                   </button>
@@ -120,7 +121,7 @@ function MultiFilter({
                   <button
                     type="button"
                     onClick={() => apply([])}
-                    className="rounded-full px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                   >
                     Clear ({value.length})
                   </button>
@@ -195,8 +196,8 @@ export function CountriesFilter({
   return (
     <MultiFilter
       param="country"
-      placeholder="All countries"
-      icon={<Globe className="size-4 shrink-0 text-muted-foreground" />}
+      placeholder="Country"
+      icon={<Globe className="size-4 shrink-0 opacity-70" />}
       searchPlaceholder="Search countries…"
       presets={REGIONS.map((r) => ({ label: r.label, values: r.codes }))}
       summary={(v) =>
@@ -234,7 +235,7 @@ export function TopicsFilter() {
     <MultiFilter
       param="topic"
       placeholder="What they sell"
-      icon={<Tags className="size-4 shrink-0 text-muted-foreground" />}
+      icon={<Tags className="size-4 shrink-0 opacity-70" />}
       summary={(v) =>
         v.length === 1
           ? (AGENCY_TOPICS.find((t) => t.value === v[0])?.label ?? v[0]!)
@@ -284,7 +285,7 @@ export function QuickViews() {
     <div
       role="toolbar"
       aria-label="Quick views"
-      className="mb-3 flex flex-wrap gap-2"
+      className="-mb-px flex [scrollbar-width:none] gap-6 overflow-x-auto"
     >
       {VIEWS.map((view) => {
         const active = isActive(view.params);
@@ -299,12 +300,7 @@ export function QuickViews() {
                 ...view.params,
               })
             }
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-sm transition-all active:scale-95",
-              active
-                ? "border-primary bg-primary text-primary-foreground"
-                : "hover:border-primary/50 hover:bg-accent",
-            )}
+            className={tabClass(active)}
           >
             {view.label}
           </button>
@@ -403,7 +399,7 @@ export function ActiveFilters() {
           type="button"
           onClick={chip.remove}
           aria-label={`Remove filter ${chip.label}`}
-          className="group inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/70"
+          className="group inline-flex items-center gap-1.5 rounded-md border bg-card px-2 py-1 text-xs font-medium transition-colors hover:border-primary/50"
         >
           {chip.label}
           <X className="size-3 opacity-60 transition-opacity group-hover:opacity-100" />

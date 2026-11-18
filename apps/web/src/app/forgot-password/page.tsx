@@ -11,8 +11,10 @@ export default function ForgotPasswordPage() {
       headline="Agency discovery and email outreach platform"
       description="Find relevant agencies, extract their contact information, and reach out with personalized emails — all in one place."
     >
-      <h2 className="text-3xl font-bold tracking-tight">Forgot password?</h2>
-      <p className="mt-4 text-lg text-muted-foreground">
+      <h2 className="text-2xl font-semibold tracking-tight">
+        Forgot password?
+      </h2>
+      <p className="mt-2 text-sm text-muted-foreground">
         Password reset by email is not enabled yet. Please contact your
         administrator to reset your password.
       </p>

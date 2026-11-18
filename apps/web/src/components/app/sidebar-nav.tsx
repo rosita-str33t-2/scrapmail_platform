@@ -3,15 +3,17 @@
 import {
   Building2,
   FileText,
-  House,
+  LayoutGrid,
   Layers,
-  Mail,
+  Send,
   ShieldCheck,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Tooltip } from "radix-ui";
+import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -23,11 +25,11 @@ type NavItem = {
 };
 
 const NAV: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: House },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { href: "/agencies", label: "Agencies", icon: Building2 },
-  { href: "/scraping-jobs", label: "Scraping Jobs", icon: Layers },
   { href: "/contacts", label: "Contacts", icon: Users },
-  { href: "#", label: "Email Campaigns", icon: Mail, soon: true },
+  { href: "/scraping-jobs", label: "Scraping Jobs", icon: Layers },
+  { href: "#", label: "Email Campaigns", icon: Send, soon: true },
   { href: "#", label: "Templates", icon: FileText, soon: true },
 ];
 
@@ -35,97 +37,163 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/users", label: "User management", icon: ShieldCheck },
 ];
 
-export function SidebarNav({
-  isAdmin,
-  collapsed,
-  onNavigate,
+function isActive(pathname: string, item: NavItem) {
+  return (
+    !item.soon &&
+    (pathname === item.href || pathname.startsWith(`${item.href}/`))
+  );
+}
+
+/** Label shown to the right of a rail icon on hover or keyboard focus. */
+export function RailTooltip({
+  label,
+  children,
 }: {
-  isAdmin: boolean;
-  collapsed: boolean;
-  onNavigate?: () => void;
+  label: string;
+  children: ReactNode;
 }) {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content
+          side="right"
+          sideOffset={10}
+          className="z-50 rounded-md border bg-popover px-2.5 py-1.5 text-xs font-medium text-popover-foreground shadow-lg data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:slide-in-from-left-1 data-[state=instant-open]:animate-in data-[state=instant-open]:fade-in-0"
+        >
+          {label}
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+}
+
+/** Icon-only navigation rail (desktop), as in the Instantly app. */
+export function RailNav({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
 
   const renderItem = (item: NavItem) => {
     const Icon = item.icon;
-    const active =
-      !item.soon &&
-      (pathname === item.href || pathname.startsWith(`${item.href}/`));
-    const base = cn(
-      "group relative flex items-center rounded-lg text-[15px] transition-all duration-200",
-      collapsed ? "size-11 justify-center" : "gap-3 px-3.5 py-2.5",
-    );
+    const active = isActive(pathname, item);
+    const base =
+      "flex size-8 items-center justify-center rounded-md transition-colors duration-150";
 
     if (item.soon) {
       return (
         <li key={item.label}>
-          <span
-            aria-disabled="true"
-            title={collapsed ? `${item.label} (coming soon)` : undefined}
-            className={cn(base, "cursor-not-allowed text-muted-foreground/60")}
-          >
-            <Icon className="size-5 shrink-0" />
-            {!collapsed && (
-              <>
-                <span className="truncate">{item.label}</span>
-                <span className="ml-auto rounded-full bg-background/70 px-2 py-0.5 text-[11px]">
-                  Soon
-                </span>
-              </>
-            )}
-          </span>
+          <RailTooltip label={`${item.label} · coming soon`}>
+            <span
+              tabIndex={0}
+              aria-disabled="true"
+              aria-label={`${item.label} (coming soon)`}
+              className={cn(base, "text-sidebar-foreground/40 outline-none")}
+            >
+              <Icon className="size-[18px]" strokeWidth={1.75} />
+            </span>
+          </RailTooltip>
         </li>
       );
     }
 
     return (
       <li key={item.label}>
+        <RailTooltip label={item.label}>
+          <Link
+            href={item.href}
+            aria-label={item.label}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              base,
+              "outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+              active
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+            )}
+          >
+            <Icon className="size-[18px]" strokeWidth={1.75} />
+          </Link>
+        </RailTooltip>
+      </li>
+    );
+  };
+
+  return (
+    <nav aria-label="Main" className="mt-5 flex flex-col items-center gap-4">
+      <ul className="flex flex-col items-center gap-1.5">
+        {NAV.map(renderItem)}
+      </ul>
+      {isAdmin && (
+        <>
+          <span aria-hidden="true" className="h-px w-6 bg-sidebar-border" />
+          <ul className="flex flex-col items-center gap-1.5">
+            {ADMIN_NAV.map(renderItem)}
+          </ul>
+        </>
+      )}
+    </nav>
+  );
+}
+
+/** Navigation with labels, for the mobile drawer. */
+export function DrawerNav({
+  isAdmin,
+  onNavigate,
+}: {
+  isAdmin: boolean;
+  onNavigate: () => void;
+}) {
+  const pathname = usePathname();
+
+  const renderItem = (item: NavItem) => {
+    const Icon = item.icon;
+    const active = isActive(pathname, item);
+    const base =
+      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors";
+    if (item.soon) {
+      return (
+        <li key={item.label}>
+          <span
+            aria-disabled="true"
+            className={cn(base, "text-sidebar-foreground/50")}
+          >
+            <Icon className="size-[18px]" strokeWidth={1.75} />
+            {item.label}
+            <span className="ml-auto rounded bg-sidebar-accent px-1.5 py-0.5 text-[11px]">
+              Soon
+            </span>
+          </span>
+        </li>
+      );
+    }
+    return (
+      <li key={item.label}>
         <Link
           href={item.href}
           onClick={onNavigate}
           aria-current={active ? "page" : undefined}
-          title={collapsed ? item.label : undefined}
           className={cn(
             base,
             active
-              ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground shadow-sm"
-              : "text-sidebar-foreground hover:translate-x-0.5 hover:bg-background/60",
+              ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+              : "text-sidebar-foreground hover:bg-sidebar-accent/60",
           )}
         >
-          <Icon
-            className={cn(
-              "size-5 shrink-0 transition-transform duration-200",
-              !active && "group-hover:scale-110",
-            )}
-          />
-          {!collapsed && <span className="truncate">{item.label}</span>}
+          <Icon className="size-[18px]" strokeWidth={1.75} />
+          {item.label}
         </Link>
       </li>
     );
   };
 
   return (
-    <nav className="mt-8 flex flex-1 flex-col gap-6" aria-label="Main">
-      <ul
-        className={cn("space-y-1", collapsed && "flex flex-col items-center")}
-      >
-        {NAV.map(renderItem)}
-      </ul>
+    <nav aria-label="Main menu" className="mt-6 space-y-5">
+      <ul className="space-y-0.5">{NAV.map(renderItem)}</ul>
       {isAdmin && (
-        <div className="border-t border-sidebar-border pt-5">
-          {!collapsed && (
-            <p className="mb-2 px-3.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Administration
-            </p>
-          )}
-          <ul
-            className={cn(
-              "space-y-1",
-              collapsed && "flex flex-col items-center",
-            )}
-          >
-            {ADMIN_NAV.map(renderItem)}
-          </ul>
+        <div className="border-t border-sidebar-border pt-4">
+          <p className="mb-1.5 px-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            Administration
+          </p>
+          <ul className="space-y-0.5">{ADMIN_NAV.map(renderItem)}</ul>
         </div>
       )}
     </nav>

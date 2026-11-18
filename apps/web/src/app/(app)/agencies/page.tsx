@@ -17,7 +17,7 @@ import {
 } from "@/components/app/data-table";
 import { ExportDialog } from "@/components/app/export-dialog";
 import { LiveRefresh } from "@/components/app/live-refresh";
-import { EmptyState, PageHeader } from "@/components/app/page-header";
+import { EmptyState, PageHeader, Toolbar } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status-badge";
 import { RelevanceBadge } from "@/components/app/relevance-badge";
 import { hasFilters, parseFilters, queryAgencies } from "@/lib/agencies";
@@ -75,24 +75,24 @@ export default async function AgenciesPage({ searchParams }: Props) {
     <>
       <PageHeader
         title="Agencies"
-        description={`${total.toLocaleString()} agencies${filtered ? " match your filters" : " in your database"}.`}
+        description={`${total.toLocaleString()}${filtered ? " matching" : ""}`}
+        tabs={<QuickViews />}
         actions={
-          <div className="flex items-center gap-3">
+          <>
             <LiveRefresh
               tables={["scrape_jobs"]}
               workspaceId={workspaceId}
               minIntervalMs={10000}
             />
             <ExportDialog />
-          </div>
+          </>
         }
       />
 
-      <QuickViews />
-      <div className="mb-3 flex flex-wrap items-center gap-3">
+      <Toolbar>
         <SearchInput
-          placeholder="Search name, website, email, city, phone or services…"
-          className="max-w-md"
+          placeholder="Search name, website, email, city…"
+          className="sm:w-72"
         />
         <CountriesFilter
           counts={Object.fromEntries(
@@ -130,7 +130,7 @@ export default async function AgenciesPage({ searchParams }: Props) {
         />
         <FilterSelect
           param="contact"
-          label="Contact details"
+          label="Contact"
           options={[
             { value: "", label: "Any contact details" },
             { value: "email", label: "With email" },
@@ -151,7 +151,7 @@ export default async function AgenciesPage({ searchParams }: Props) {
         />
         <FilterSelect
           param="status"
-          label="Website status"
+          label="Website"
           options={[
             { value: "", label: "Any website status" },
             { value: "ok", label: "Checked" },
@@ -160,15 +160,15 @@ export default async function AgenciesPage({ searchParams }: Props) {
             { value: "dead", label: "Offline / not found" },
           ]}
         />
-      </div>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <ActiveFilters />
         <Pagination
           page={filters.page}
           pageSize={filters.size}
           total={total}
           className="ml-auto"
         />
+      </Toolbar>
+      <div className="mb-3 empty:hidden">
+        <ActiveFilters />
       </div>
 
       {!agencies?.length ? (
@@ -182,8 +182,8 @@ export default async function AgenciesPage({ searchParams }: Props) {
         />
       ) : (
         <TableFrame>
-          <table className="w-full text-left text-sm">
-            <thead className="bg-muted text-muted-foreground">
+          <table>
+            <thead>
               <tr>
                 <th className="px-4 py-3">
                   <SortHeader field="name" current={filters.sort}>
@@ -200,8 +200,8 @@ export default async function AgenciesPage({ searchParams }: Props) {
                     Relevance
                   </SortHeader>
                 </th>
-                <th className="px-4 py-3 font-medium">Services</th>
-                <th className="px-4 py-3 font-medium">Contact</th>
+                <th className="px-4">Services</th>
+                <th className="px-4">Contact</th>
                 <th className="px-4 py-3">
                   <SortHeader field="checked" current={filters.sort}>
                     Website
@@ -209,21 +209,18 @@ export default async function AgenciesPage({ searchParams }: Props) {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody>
               {agencies.map((a) => {
                 const emails = a.agency_contacts.filter((c) => c.email);
                 const status = a.website_status
                   ? WEBSITE_STATUS[a.website_status]
                   : undefined;
                 return (
-                  <tr
-                    key={a.id}
-                    className="align-top transition-colors hover:bg-muted/50"
-                  >
+                  <tr key={a.id} className="align-top">
                     <td className="px-4 py-3">
                       <Link
                         href={`/agencies/${a.id}`}
-                        className="font-medium text-primary hover:underline"
+                        className="font-medium hover:text-primary hover:underline"
                       >
                         {a.name}
                       </Link>
@@ -267,7 +264,7 @@ export default async function AgenciesPage({ searchParams }: Props) {
                     <td className="px-4 py-3">
                       {emails[0]?.email ?? "—"}
                       {emails.length > 1 && (
-                        <span className="ml-1 rounded-full bg-accent px-1.5 text-xs text-accent-foreground">
+                        <span className="ml-1.5 rounded bg-accent px-1.5 py-px text-[11px] font-medium text-muted-foreground">
                           +{emails.length - 1}
                         </span>
                       )}

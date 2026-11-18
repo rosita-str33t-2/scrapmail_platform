@@ -48,11 +48,11 @@ export function WorkerHealth({
   return (
     <section
       aria-label="Worker status"
-      className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border bg-card px-6 py-4 shadow-sm"
+      className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border bg-card px-5 py-3"
     >
       <div className="flex items-center gap-2">
         <Activity className="size-4 text-muted-foreground" />
-        <span className="font-semibold">Worker</span>
+        <span className="text-sm font-semibold">Worker</span>
         <StatusBadge tone={online.length ? "success" : "warning"}>
           {online.length ? "Online" : "Offline"}
         </StatusBadge>

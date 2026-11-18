@@ -12,24 +12,30 @@ const TONES: Record<Tone, string> = {
   neutral: "bg-neutral-surface text-neutral",
 };
 
-/** Small colored pill; colors adapt to light and dark themes. */
+/** Tinted status pill with a leading dot (Instantly's "• Active" style). */
 export function StatusBadge({
   tone,
   children,
   className,
+  dot = true,
 }: {
   tone: Tone;
   children: ReactNode;
   className?: string;
+  /** Show the small dot before the text. */
+  dot?: boolean;
 }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize transition-colors duration-300",
+        "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap capitalize transition-colors duration-300",
         TONES[tone],
         className,
       )}
     >
+      {dot && (
+        <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
+      )}
       {children}
     </span>
   );

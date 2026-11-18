@@ -45,18 +45,18 @@ export function LoginForm({ initial }: { initial?: FormState }) {
       </div>
 
       <div className="flex items-center justify-between gap-4">
-        <label className="flex items-center gap-3 text-base">
+        <label className="flex items-center gap-2.5 text-sm">
           <input
             type="checkbox"
             name="remember"
             defaultChecked
-            className="size-5 rounded accent-primary"
+            className="size-4 rounded accent-primary"
           />
           Remember me
         </label>
         <Link
           href="/forgot-password"
-          className="text-base font-medium text-primary hover:underline"
+          className="text-sm font-medium text-primary hover:underline"
         >
           Forgot password?
         </Link>
@@ -66,7 +66,7 @@ export function LoginForm({ initial }: { initial?: FormState }) {
         {pending ? "Signing in…" : "Sign in"}
       </Button>
 
-      <p className="text-center text-base">
+      <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
         <Link
           href="/register"

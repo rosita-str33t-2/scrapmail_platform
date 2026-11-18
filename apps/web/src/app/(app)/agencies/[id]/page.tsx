@@ -1,11 +1,12 @@
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { LiveRefresh } from "@/components/app/live-refresh";
+import { PageHeader } from "@/components/app/page-header";
 import { RelevanceBadge } from "@/components/app/relevance-badge";
 import { StatusBadge } from "@/components/app/status-badge";
+import { Button } from "@/components/ui/button";
 import { countryName } from "@/lib/countries";
 import { agencyId } from "@/lib/instantly";
 import { requireWorkspace } from "@/lib/auth/workspace";
@@ -106,44 +107,42 @@ export default async function AgencyPage({
 
   return (
     <>
-      <Link
-        href="/agencies"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
-      >
-        <ArrowLeft className="size-4" /> Agencies
-      </Link>
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{agency.name}</h1>
-          {agency.description && (
-            <p className="mt-2 max-w-3xl text-lg text-muted-foreground">
-              {agency.description}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          <LiveRefresh
-            tables={["scrape_jobs"]}
-            workspaceId={workspaceId}
-            minIntervalMs={5000}
-          />
-          {agency.website_url && (
-            <a
-              href={agency.website_url}
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              className="inline-flex items-center gap-1 text-primary hover:underline"
-            >
-              Open website <ExternalLink className="size-4" />
-            </a>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title={agency.name}
+        description={agency.ref ? agencyId(agency.ref) : undefined}
+        back={{ href: "/agencies", label: "Back to agencies" }}
+        actions={
+          <>
+            <LiveRefresh
+              tables={["scrape_jobs"]}
+              workspaceId={workspaceId}
+              minIntervalMs={5000}
+            />
+            {agency.website_url && (
+              <Button asChild variant="outline">
+                <a
+                  href={agency.website_url}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                >
+                  Open website <ExternalLink />
+                </a>
+              </Button>
+            )}
+          </>
+        }
+      />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <section className="rounded-xl border bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-bold">Details</h2>
-          <div className="mb-5 rounded-lg bg-muted px-4 py-3">
+      {agency.description && (
+        <p className="mb-4 max-w-4xl text-sm text-muted-foreground">
+          {agency.description}
+        </p>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <section className="rounded-lg border bg-card p-5">
+          <h2 className="mb-4 text-[15px] font-semibold">Details</h2>
+          <div className="mb-5 rounded-md border bg-muted/50 px-4 py-3">
             <p className="text-xs text-muted-foreground">Relevance</p>
             <div className="mt-1">
               <RelevanceBadge
@@ -169,30 +168,32 @@ export default async function AgencyPage({
               </p>
             )}
           </div>
-          <dl className="space-y-3 text-sm">
+          <dl className="divide-y text-sm">
             {facts.map(([label, value]) => (
-              <div key={label}>
-                <dt className="text-muted-foreground">{label}</dt>
-                <dd className="font-medium break-words">{value || "—"}</dd>
+              <div key={label} className="flex justify-between gap-6 py-2.5">
+                <dt className="shrink-0 text-muted-foreground">{label}</dt>
+                <dd className="min-w-0 text-right font-medium break-words">
+                  {value || "—"}
+                </dd>
               </div>
             ))}
           </dl>
         </section>
 
-        <section className="rounded-xl border bg-card p-6 shadow-sm lg:col-span-2">
-          <h2 className="mb-4 text-lg font-bold">
+        <section className="rounded-lg border bg-card p-5 lg:col-span-2">
+          <h2 className="mb-3 text-[15px] font-semibold">
             Contacts ({agency.agency_contacts.length})
           </h2>
           {agency.agency_contacts.length === 0 ? (
             <p className="text-muted-foreground">No contacts yet.</p>
           ) : (
             <table className="w-full text-left text-sm">
-              <thead className="text-muted-foreground">
+              <thead className="border-b text-[11px] tracking-wider uppercase">
                 <tr>
-                  <th className="py-2 font-medium">Email</th>
-                  <th className="py-2 font-medium">Name</th>
-                  <th className="py-2 font-medium">Title</th>
-                  <th className="py-2 font-medium">Source</th>
+                  <th className="py-2 font-semibold">Email</th>
+                  <th className="py-2 font-semibold">Name</th>
+                  <th className="py-2 font-semibold">Title</th>
+                  <th className="py-2 font-semibold">Source</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -240,12 +241,15 @@ export default async function AgencyPage({
             </table>
           )}
 
-          <h2 className="mt-8 mb-4 text-lg font-bold">
+          <h2 className="mt-8 mb-3 text-[15px] font-semibold">
             Sources ({agency.agency_sources.length})
           </h2>
           <ul className="space-y-2 text-sm">
             {agency.agency_sources.map((s) => (
-              <li key={s.id} className="rounded-lg bg-muted px-3 py-2">
+              <li
+                key={s.id}
+                className="rounded-md border bg-muted/50 px-3 py-2"
+              >
                 <span className="font-medium capitalize">{s.source_type}</span>{" "}
                 · {s.source_name}
                 <div className="text-xs break-all text-muted-foreground">

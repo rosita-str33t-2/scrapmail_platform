@@ -73,12 +73,12 @@ export function RegisterForm() {
         />
       </div>
 
-      <label className="flex items-center gap-3 text-base">
+      <label className="flex items-center gap-2.5 text-sm">
         <input
           type="checkbox"
           name="terms"
           required
-          className="size-5 rounded accent-primary"
+          className="size-4 rounded accent-primary"
         />
         <span>
           I agree to the <span className="font-medium text-primary">Terms</span>{" "}
@@ -90,7 +90,7 @@ export function RegisterForm() {
         {pending ? "Creating account…" : "Create account"}
       </Button>
 
-      <p className="text-center text-base">
+      <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link
           href="/login"

@@ -30,10 +30,10 @@ export default async function LoginPage({ searchParams }: Props) {
       headline="Agency discovery and email outreach platform"
       description="Find relevant agencies, extract their contact information, and reach out with personalized emails — all in one place."
     >
-      <h2 className="text-3xl font-bold tracking-tight">
+      <h2 className="text-2xl font-semibold tracking-tight">
         Welcome back to Scrap&amp;Mail
       </h2>
-      <p className="mt-2 mb-8 text-lg text-muted-foreground">
+      <p className="mt-1.5 mb-7 text-sm text-muted-foreground">
         Sign in to your account to continue.
       </p>
       <LoginForm initial={initial} />

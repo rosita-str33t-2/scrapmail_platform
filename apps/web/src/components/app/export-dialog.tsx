@@ -122,7 +122,7 @@ export function ExportDialog() {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button>
           <Download /> Export CSV
         </Button>
       </DialogTrigger>
@@ -134,15 +134,19 @@ export function ExportDialog() {
         </DialogDescription>
 
         <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-          <div className="rounded-lg bg-muted px-4 py-3">
-            <p className="text-muted-foreground">Not exported yet</p>
-            <p className="text-xl font-bold">
+          <div className="rounded-md border bg-muted/50 px-4 py-3">
+            <p className="text-[13px] text-muted-foreground">
+              Not exported yet
+            </p>
+            <p className="mt-0.5 text-xl font-semibold tabular-nums">
               {summary ? unused.toLocaleString() : "…"}
             </p>
           </div>
-          <div className="rounded-lg bg-muted px-4 py-3">
-            <p className="text-muted-foreground">Already exported</p>
-            <p className="text-xl font-bold">
+          <div className="rounded-md border bg-muted/50 px-4 py-3">
+            <p className="text-[13px] text-muted-foreground">
+              Already exported
+            </p>
+            <p className="mt-0.5 text-xl font-semibold tabular-nums">
               {summary ? used.toLocaleString() : "…"}
             </p>
           </div>
@@ -203,7 +207,7 @@ export function ExportDialog() {
         {summary && summary.batches.length > 0 && (
           <div className="mt-6">
             <h3 className="text-sm font-semibold">Recent exports</h3>
-            <ul className="mt-2 divide-y rounded-lg border text-sm">
+            <ul className="mt-2 divide-y rounded-md border text-sm">
               {summary.batches.map((b) => (
                 <li
                   key={b.id}
