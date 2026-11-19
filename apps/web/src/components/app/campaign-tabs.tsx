@@ -1,16 +1,16 @@
 import { TriangleAlert } from "lucide-react";
+import { cache } from "react";
 
 import { PageTabs } from "@/components/app/page-header";
 import { createClient } from "@/lib/supabase/server";
 
-/** Campaigns / Replies / Bounces, with the number of new replies and of bounces. */
-export async function CampaignSectionTabs({
-  active,
-}: {
-  active: "campaigns" | "replies" | "bounces";
-}) {
+/**
+ * Numbers on the tabs, once per request. Pages call it first thing, so the numbers
+ * load while the page loads its own data (not after it).
+ */
+export const preloadSectionCounts = cache(async () => {
   const supabase = await createClient();
-  const [open, bounces] = await Promise.all([
+  return Promise.all([
     supabase
       .from("campaign_replies")
       .select("id", { count: "exact", head: true })
@@ -21,6 +21,15 @@ export async function CampaignSectionTabs({
       .select("id", { count: "exact", head: true })
       .eq("kind", "bounced"),
   ]);
+});
+
+/** Campaigns / Replies / Bounces, with the number of new replies and of bounces. */
+export async function CampaignSectionTabs({
+  active,
+}: {
+  active: "campaigns" | "replies" | "bounces";
+}) {
+  const [open, bounces] = await preloadSectionCounts();
   return (
     <PageTabs
       label="Email campaigns"
@@ -55,10 +64,10 @@ function ago(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
-/** When replies and bounces were last synced from Instantly, and any sync error. */
-export async function SyncStatus() {
+/** Sync state, once per request (pages preload it like the tab numbers). */
+export const preloadSyncStatus = cache(async () => {
   const supabase = await createClient();
-  const { data } = await supabase
+  return supabase
     .from("instantly_sync_state")
     .select("last_sync_at, last_webhook_at, last_error")
     .maybeSingle<{
@@ -66,6 +75,11 @@ export async function SyncStatus() {
       last_webhook_at: string | null;
       last_error: string | null;
     }>();
+});
+
+/** When replies and bounces were last synced from Instantly, and any sync error. */
+export async function SyncStatus() {
+  const { data } = await preloadSyncStatus();
   if (!data?.last_sync_at) {
     return (
       <p className="text-xs text-muted-foreground">

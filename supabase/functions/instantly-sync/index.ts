@@ -1,8 +1,9 @@
 // Instantly -> Scrap&Mail sync (Supabase Edge Function, Deno).
 //
 // Called in two ways, both with the header "x-scrapmail-secret":
-//   * by Instantly's webhook (any event): bounces and unsubscribes are saved at
-//     once; a reply starts a quick reply sync.
+//   * by Instantly's webhook (any event): open campaign pages are told to refresh
+//     (live update); bounces and unsubscribes are saved at once; a reply starts a
+//     quick reply sync.
 //   * every 2 minutes by pg_cron (body {"source":"cron"}): the full backup sync of
 //     replies, bounces, unsubscribes and the list of Instantly leads.
 // The work runs in the background (EdgeRuntime.waitUntil), so callers get an
@@ -369,7 +370,19 @@ type WebhookEvent = {
 };
 
 async function handleEvent(event: WebhookEvent) {
-  await saveState({ last_webhook_at: new Date().toISOString() });
+  await Promise.all([
+    saveState({ last_webhook_at: new Date().toISOString() }),
+    // Any event (sent, opened, replied, …) changes campaign numbers: open campaign
+    // pages refresh at once (live update, at most one per 750 ms).
+    db
+      .rpc("signal_live_change", {
+        p_workspace_id: WORKSPACE,
+        p_kind: "campaigns",
+      })
+      .then(({ error }) => {
+        if (error) console.error(`live update: ${error.message}`);
+      }),
+  ]);
   const type = event.event_type ?? "";
   if (
     (type === "email_bounced" || type === "lead_unsubscribed") &&

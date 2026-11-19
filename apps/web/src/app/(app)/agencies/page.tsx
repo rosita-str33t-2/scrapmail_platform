@@ -86,11 +86,7 @@ export default async function AgenciesPage({ searchParams }: Props) {
         tabs={<QuickViews />}
         actions={
           <>
-            <LiveRefresh
-              tables={["scrape_jobs"]}
-              workspaceId={workspaceId}
-              minIntervalMs={10000}
-            />
+            <LiveRefresh kinds={["agencies", "contacts", "levels"]} />
             <ExportButton
               href={`/agencies/export${exportQuery ? `?${exportQuery}` : ""}`}
               count={total}

@@ -101,9 +101,11 @@ export default async function DashboardPage() {
         description={`Welcome back, ${firstName}`}
         actions={
           <LiveRefresh
-            tables={isAdmin ? ["scrape_jobs", "profiles"] : ["scrape_jobs"]}
-            workspaceId={workspaceId}
-            minIntervalMs={5000}
+            kinds={
+              isAdmin
+                ? ["jobs", "agencies", "contacts", "users"]
+                : ["jobs", "agencies", "contacts"]
+            }
           />
         }
       />

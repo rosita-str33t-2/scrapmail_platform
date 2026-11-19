@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+
+import { useLiveChanges } from "./live-updates";
 
 /** Replies from leads that nobody has handled yet (auto-replies not counted). */
 async function countOpenReplies() {
@@ -16,29 +18,34 @@ async function countOpenReplies() {
 }
 
 /**
- * Number of new replies, refreshed every 30 seconds (and when the tab is shown
- * again). Renders nothing while there are none.
+ * Number of new replies, updated as soon as a reply comes in or is marked as done
+ * (live updates), and every 2 minutes as a fallback. Renders nothing while there
+ * are none.
  */
 export function RepliesBadge({ className }: { className?: string }) {
   const [count, setCount] = useState(0);
+  const alive = useRef(true);
+
+  const load = useCallback(() => {
+    if (document.hidden) return;
+    countOpenReplies()
+      .then((n) => alive.current && setCount(n))
+      .catch(() => {});
+  }, []);
+
+  useLiveChanges(["replies"], load);
 
   useEffect(() => {
-    let alive = true;
-    const load = () => {
-      if (document.hidden) return;
-      countOpenReplies()
-        .then((n) => alive && setCount(n))
-        .catch(() => {});
-    };
+    alive.current = true;
     load();
-    const timer = setInterval(load, 30_000);
+    const timer = setInterval(load, 120_000);
     document.addEventListener("visibilitychange", load);
     return () => {
-      alive = false;
+      alive.current = false;
       clearInterval(timer);
       document.removeEventListener("visibilitychange", load);
     };
-  }, []);
+  }, [load]);
 
   if (!count) return null;
   return (

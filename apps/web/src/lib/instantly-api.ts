@@ -23,7 +23,35 @@ export class InstantlyError extends Error {
 
 type Query = Record<string, string | number | boolean | undefined | null>;
 
-async function get<T>(path: string, query: Query = {}): Promise<T> {
+/**
+ * Answers are shared for this long: every open page refreshes when Instantly reports
+ * a change, and they all get the same answer from one request (fast pages, and far
+ * below Instantly's rate limit). Requests in flight are shared too.
+ */
+const CACHE_MS = 2000;
+const cache = new Map<string, { at: number; value: Promise<unknown> }>();
+
+function get<T>(path: string, query: Query = {}): Promise<T> {
+  const key = `${path}?${new URLSearchParams(
+    Object.entries(query)
+      .filter(([, v]) => v !== undefined && v !== null && v !== "")
+      .map(([k, v]) => [k, String(v)]),
+  )}`;
+  const now = Date.now();
+  const hit = cache.get(key);
+  if (hit && now - hit.at < CACHE_MS) return hit.value as Promise<T>;
+  if (cache.size > 200) {
+    for (const [k, v] of cache) if (now - v.at >= CACHE_MS) cache.delete(k);
+  }
+  const value = fetchInstantly<T>(path, query);
+  cache.set(key, { at: now, value });
+  value.catch(() => {
+    if (cache.get(key)?.value === value) cache.delete(key); // never keep errors
+  });
+  return value;
+}
+
+async function fetchInstantly<T>(path: string, query: Query): Promise<T> {
   const key = process.env.INSTANTLY_API_KEY?.trim();
   if (!key) throw new InstantlyError("Instantly is not connected.", 0);
   const url = new URL(`${BASE}${path}`);

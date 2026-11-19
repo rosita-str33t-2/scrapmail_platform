@@ -131,11 +131,7 @@ export default async function ContactsPage({ searchParams }: Props) {
         }
         actions={
           <>
-            <LiveRefresh
-              tables={["scrape_jobs"]}
-              workspaceId={workspaceId}
-              minIntervalMs={10000}
-            />
+            <LiveRefresh kinds={["contacts", "levels"]} />
             <ExportButton
               href={`/contacts/export${exportQuery ? `?${exportQuery}` : ""}`}
               count={total}

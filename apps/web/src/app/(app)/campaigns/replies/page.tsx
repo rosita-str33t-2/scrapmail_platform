@@ -4,6 +4,8 @@ import Link from "next/link";
 
 import {
   CampaignSectionTabs,
+  preloadSectionCounts,
+  preloadSyncStatus,
   SyncStatus,
 } from "@/components/app/campaign-tabs";
 import {
@@ -13,7 +15,7 @@ import {
   TableFrame,
 } from "@/components/app/data-table";
 import { EmptyState, PageHeader, Toolbar } from "@/components/app/page-header";
-import { PollRefresh } from "@/components/app/poll-refresh";
+import { LiveRefresh } from "@/components/app/live-refresh";
 import { ReplyDoneButton } from "@/components/app/reply-done-button";
 import { StatusBadge } from "@/components/app/status-badge";
 import { requireWorkspace } from "@/lib/auth/workspace";
@@ -73,6 +75,9 @@ function stepLabel(step: string | null) {
 }
 
 export default async function RepliesPage({ searchParams }: Props) {
+  // Header numbers load while this page loads its list (RLS limits them).
+  void preloadSectionCounts();
+  void preloadSyncStatus();
   const { workspaceId } = await requireWorkspace();
   const params = await searchParams;
   const view = VIEWS.find((v) => v.value === (params.view ?? "")) ?? VIEWS[0];
@@ -86,7 +91,8 @@ export default async function RepliesPage({ searchParams }: Props) {
   const supabase = await createClient();
 
   // Campaigns and mailboxes that have replies (for the filters) and view counts.
-  const { data: facets } = await supabase
+  // Loaded at the same time as the list below.
+  const facetsQuery = supabase
     .from("campaign_replies")
     .select("campaign_id, campaign_name, eaccount, is_auto_reply, handled_at")
     .eq("workspace_id", workspaceId)
@@ -101,6 +107,30 @@ export default async function RepliesPage({ searchParams }: Props) {
         | "handled_at"
       >[]
     >();
+
+  let query = supabase
+    .from("campaign_replies")
+    .select(
+      "id, campaign_id, campaign_name, lead_email, lead_email_normalized, eaccount, subject, preview, step, is_auto_reply, unibox_url, received_at, handled_at",
+      { count: "exact" },
+    )
+    .eq("workspace_id", workspaceId);
+  if (view.value === "")
+    query = query.is("handled_at", null).eq("is_auto_reply", false);
+  if (view.value === "auto") query = query.eq("is_auto_reply", true);
+  if (view.value === "done")
+    query = query.not("handled_at", "is", null).eq("is_auto_reply", false);
+  if (params.campaign) query = query.eq("campaign_id", params.campaign);
+  if (params.mailbox) query = query.eq("eaccount", params.mailbox);
+  if (q) query = query.ilike("lead_email_normalized", `%${q}%`);
+  const [{ data: facets }, { data: replies, count }] = await Promise.all([
+    facetsQuery,
+    query
+      .order("received_at", { ascending: false })
+      .range((page - 1) * size, page * size - 1)
+      .returns<Reply[]>(),
+  ]);
+
   const campaigns = new Map<string, string>();
   const mailboxes = new Map<string, number>();
   for (const f of facets ?? []) {
@@ -121,25 +151,6 @@ export default async function RepliesPage({ searchParams }: Props) {
     all: inScope.length,
   };
 
-  let query = supabase
-    .from("campaign_replies")
-    .select(
-      "id, campaign_id, campaign_name, lead_email, lead_email_normalized, eaccount, subject, preview, step, is_auto_reply, unibox_url, received_at, handled_at",
-      { count: "exact" },
-    )
-    .eq("workspace_id", workspaceId);
-  if (view.value === "")
-    query = query.is("handled_at", null).eq("is_auto_reply", false);
-  if (view.value === "auto") query = query.eq("is_auto_reply", true);
-  if (view.value === "done")
-    query = query.not("handled_at", "is", null).eq("is_auto_reply", false);
-  if (params.campaign) query = query.eq("campaign_id", params.campaign);
-  if (params.mailbox) query = query.eq("eaccount", params.mailbox);
-  if (q) query = query.ilike("lead_email_normalized", `%${q}%`);
-  const { data: replies, count } = await query
-    .order("received_at", { ascending: false })
-    .range((page - 1) * size, page * size - 1)
-    .returns<Reply[]>();
   const agencies = await agenciesForEmails(
     supabase,
     workspaceId,
@@ -151,7 +162,7 @@ export default async function RepliesPage({ searchParams }: Props) {
       <PageHeader
         title="Email Campaigns"
         tabs={<CampaignSectionTabs active="replies" />}
-        actions={<PollRefresh intervalMs={15_000} />}
+        actions={<LiveRefresh kinds={["replies", "bounces"]} />}
       />
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

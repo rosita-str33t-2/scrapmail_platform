@@ -102,7 +102,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
             }))}
           />
         }
-        actions={<LiveRefresh tables={["profiles"]} minIntervalMs={3000} />}
+        actions={<LiveRefresh kinds={["users"]} />}
       />
 
       {!shown.length ? (

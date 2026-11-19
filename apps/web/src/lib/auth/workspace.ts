@@ -26,6 +26,13 @@ const getMembership = cache(async (userId: string) => {
   return data;
 });
 
+/** The signed-in user's workspace id, or null (no redirect; for the app shell). */
+export const getWorkspaceId = cache(async (): Promise<string | null> => {
+  const userId = await getUserId();
+  if (!userId) return null;
+  return (await getMembership(userId))?.workspace_id ?? null;
+});
+
 /** The signed-in user's workspace (first membership). */
 export const requireWorkspace = cache(async () => {
   const userId = await getUserId();
