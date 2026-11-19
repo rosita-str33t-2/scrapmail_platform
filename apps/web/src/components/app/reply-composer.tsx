@@ -8,11 +8,12 @@ import {
   Send,
   Trash2,
   TriangleAlert,
+  Undo2,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Popover } from "radix-ui";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ import { cn } from "@/lib/utils";
 
 import { EmailBody } from "./email-body";
 import type { EmailEditorHandle } from "./email-editor";
+import { type ScheduledSend, scheduleSend, UNDO_SECONDS } from "./undo-send";
 
 // The editor is only downloaded on conversation pages, after the page is shown.
 const EmailEditor = dynamic(
@@ -73,27 +75,97 @@ export function ReplyComposer({
   const [bcc, setBcc] = useState("");
   const [showCopies, setShowCopies] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sending, startSending] = useTransition();
   const [saveOpen, setSaveOpen] = useState(false);
   const [showSignature, setShowSignature] = useState(false);
+  // Waiting for "Undo" (10 s), then going out to Instantly.
+  const [pending, setPending] = useState<{
+    endsAt: number;
+    handle: ScheduledSend;
+  } | null>(null);
+  const [sending, setSending] = useState(false);
+  const [now, setNow] = useState(0);
+  const mounted = useRef(true);
+  const toastId = `undo-send-${replyId}`;
 
-  const send = () => {
-    if (sending || !editor.current) return;
-    const { html, text } = editor.current.getContent();
-    setError(null);
-    startSending(async () => {
-      const result = await sendReply({ replyId, subject, html, text, cc, bcc });
-      if (!result.ok) {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!pending) return;
+    const tick = setInterval(() => setNow(Date.now()), 200);
+    return () => clearInterval(tick);
+  }, [pending]);
+
+  /** Sends to Instantly (also when the user has moved to another page). */
+  const deliver = async (payload: Parameters<typeof sendReply>[0]) => {
+    if (mounted.current) setSending(true);
+    const result = await sendReply(payload).catch(() => ({
+      ok: false as const,
+      error: "The reply could not be sent. Please try again.",
+    }));
+    toast.dismiss(toastId);
+    if (!result.ok) {
+      toast.error(`Reply to ${to} was not sent: ${result.error}`);
+      if (mounted.current) {
         setError(result.error);
-        return;
+        setSending(false);
+        setPending(null);
       }
+      return;
+    }
+    toast.success(`Reply sent to ${to}`);
+    if (mounted.current) {
       editor.current?.clear();
       setCc("");
       setBcc("");
-      toast.success(`Reply sent to ${to}`);
+      setSending(false);
+      setPending(null);
       router.refresh();
+    }
+  };
+
+  const undo = (handle: ScheduledSend) => {
+    if (!handle.cancel()) return; // already on its way
+    toast.dismiss(toastId);
+    toast("Sending cancelled. Your reply was not sent.");
+    if (mounted.current) {
+      setPending(null);
+      editor.current?.focus();
+    }
+  };
+
+  const send = () => {
+    if (pending || sending || !editor.current) return;
+    const { html, text } = editor.current.getContent();
+    setError(null);
+    // Checked now, so nothing fails after the 10 seconds for a simple reason.
+    if (!subject.trim()) {
+      setError("Please enter a subject.");
+      return;
+    }
+    if (!text.trim() && !/<img/i.test(html)) {
+      setError("Please write a message.");
+      return;
+    }
+    const payload = { replyId, subject, html, text, cc, bcc };
+    const handle = scheduleSend(() => void deliver(payload));
+    setNow(Date.now());
+    setPending({ endsAt: Date.now() + UNDO_SECONDS * 1000, handle });
+    toast(`Sending your reply to ${to}…`, {
+      id: toastId,
+      duration: UNDO_SECONDS * 1000 + 1000,
+      action: { label: "Undo", onClick: () => undo(handle) },
     });
   };
+
+  const secondsLeft = pending
+    ? Math.max(1, Math.ceil((pending.endsAt - now) / 1000))
+    : 0;
+  const locked = Boolean(pending) || sending;
 
   return (
     <section
@@ -111,90 +183,96 @@ export function ReplyComposer({
         </p>
       )}
 
-      <div className="grid gap-2 text-sm sm:grid-cols-[4.5rem_1fr]">
-        <span className="pt-2 text-muted-foreground">From</span>
-        <div
-          className="flex h-9 min-w-0 items-center gap-2 rounded-md border border-dashed px-3"
-          title="The reply is sent through Instantly from this business address. No email login is needed."
-        >
-          <span className="truncate font-medium">
-            {from ?? "Unknown account"}
-          </span>
-          <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
-            · business address that got this email, sent via Instantly
-          </span>
-        </div>
-        <span className="pt-2 text-muted-foreground">To</span>
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 min-w-0 flex-1 items-center truncate rounded-md border border-dashed px-3">
-            {to}
-          </div>
-          {!showCopies && (
-            <button
-              type="button"
-              onClick={() => setShowCopies(true)}
-              className="h-9 rounded-md px-2 text-[13px] font-medium text-primary hover:bg-accent"
-            >
-              CC / BCC
-            </button>
-          )}
-        </div>
-        {showCopies && (
-          <>
-            <label htmlFor="reply-cc" className="pt-2 text-muted-foreground">
-              CC
-            </label>
-            <input
-              id="reply-cc"
-              value={cc}
-              onChange={(e) => setCc(e.target.value)}
-              placeholder="name@company.com, …"
-              className={fieldClass}
-            />
-            <label htmlFor="reply-bcc" className="pt-2 text-muted-foreground">
-              BCC
-            </label>
-            <input
-              id="reply-bcc"
-              value={bcc}
-              onChange={(e) => setBcc(e.target.value)}
-              placeholder="name@company.com, …"
-              className={fieldClass}
-            />
-          </>
-        )}
-        <label htmlFor="reply-subject" className="pt-2 text-muted-foreground">
-          Subject
-        </label>
-        <input
-          id="reply-subject"
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          className={fieldClass}
-          maxLength={300}
-        />
-      </div>
-
-      <div className="mt-3">
-        <EmailEditor editorRef={editor} onSubmit={send} />
-      </div>
-
-      <details
-        className="group mt-2 rounded-md border bg-muted/30"
-        onToggle={(e) => setShowSignature(e.currentTarget.open)}
+      {/* Locked while the reply waits to go out (Undo restores editing). */}
+      <div
+        inert={locked}
+        className={cn("transition-opacity", locked && "opacity-60")}
       >
-        <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs text-muted-foreground select-none">
-          <PenLine className="size-3.5" />
-          Signature added automatically below your message
-          <span className="ml-auto text-primary group-open:hidden">Show</span>
-          <span className="ml-auto hidden text-primary group-open:inline">
-            Hide
-          </span>
-        </summary>
-        <div className="px-3 pb-3">
-          {showSignature && <EmailBody html={SIGNATURE_HTML} text={null} />}
+        <div className="grid gap-2 text-sm sm:grid-cols-[4.5rem_1fr]">
+          <span className="pt-2 text-muted-foreground">From</span>
+          <div
+            className="flex h-9 min-w-0 items-center gap-2 rounded-md border border-dashed px-3"
+            title="The reply is sent through Instantly from this business address. No email login is needed."
+          >
+            <span className="truncate font-medium">
+              {from ?? "Unknown account"}
+            </span>
+            <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
+              · business address that got this email, sent via Instantly
+            </span>
+          </div>
+          <span className="pt-2 text-muted-foreground">To</span>
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 min-w-0 flex-1 items-center truncate rounded-md border border-dashed px-3">
+              {to}
+            </div>
+            {!showCopies && (
+              <button
+                type="button"
+                onClick={() => setShowCopies(true)}
+                className="h-9 rounded-md px-2 text-[13px] font-medium text-primary hover:bg-accent"
+              >
+                CC / BCC
+              </button>
+            )}
+          </div>
+          {showCopies && (
+            <>
+              <label htmlFor="reply-cc" className="pt-2 text-muted-foreground">
+                CC
+              </label>
+              <input
+                id="reply-cc"
+                value={cc}
+                onChange={(e) => setCc(e.target.value)}
+                placeholder="name@company.com, …"
+                className={fieldClass}
+              />
+              <label htmlFor="reply-bcc" className="pt-2 text-muted-foreground">
+                BCC
+              </label>
+              <input
+                id="reply-bcc"
+                value={bcc}
+                onChange={(e) => setBcc(e.target.value)}
+                placeholder="name@company.com, …"
+                className={fieldClass}
+              />
+            </>
+          )}
+          <label htmlFor="reply-subject" className="pt-2 text-muted-foreground">
+            Subject
+          </label>
+          <input
+            id="reply-subject"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            className={fieldClass}
+            maxLength={300}
+          />
         </div>
-      </details>
+
+        <div className="mt-3">
+          <EmailEditor editorRef={editor} onSubmit={send} />
+        </div>
+
+        <details
+          className="group mt-2 rounded-md border bg-muted/30"
+          onToggle={(e) => setShowSignature(e.currentTarget.open)}
+        >
+          <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs text-muted-foreground select-none">
+            <PenLine className="size-3.5" />
+            Signature added automatically below your message
+            <span className="ml-auto text-primary group-open:hidden">Show</span>
+            <span className="ml-auto hidden text-primary group-open:inline">
+              Hide
+            </span>
+          </summary>
+          <div className="px-3 pb-3">
+            {showSignature && <EmailBody html={SIGNATURE_HTML} text={null} />}
+          </div>
+        </details>
+      </div>
 
       {error && (
         <p
@@ -207,13 +285,41 @@ export function ReplyComposer({
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button type="button" onClick={send} disabled={sending || !canSend}>
-          {sending ? <Loader2 className="animate-spin" /> : <Send />}
-          {sending ? "Sending…" : "Send reply"}
-        </Button>
-        <span className="hidden text-xs text-muted-foreground sm:inline">
-          Ctrl + Enter
-        </span>
+        {pending && !sending ? (
+          <div
+            role="status"
+            className="flex flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/10 py-1 pr-1 pl-3 text-sm"
+          >
+            <span className="tabular-nums">
+              Sending in <b>{secondsLeft}</b> s…
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => undo(pending.handle)}
+            >
+              <Undo2 /> Undo
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => pending.handle.now()}
+            >
+              Send now
+            </Button>
+          </div>
+        ) : (
+          <>
+            <Button type="button" onClick={send} disabled={sending || !canSend}>
+              {sending ? <Loader2 className="animate-spin" /> : <Send />}
+              {sending ? "Sending…" : "Send reply"}
+            </Button>
+            <span className="hidden text-xs text-muted-foreground sm:inline">
+              Ctrl + Enter · you can undo for {UNDO_SECONDS} seconds
+            </span>
+          </>
+        )}
         <div className="ml-auto flex items-center gap-1">
           <TemplatesMenu
             templates={templates}
