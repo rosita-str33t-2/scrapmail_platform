@@ -2,6 +2,7 @@ import "server-only";
 
 import { type ExportLevel, levelRange } from "@/lib/contacts";
 import { countryName } from "@/lib/countries";
+import { splitName } from "@/lib/email-content";
 import type { createClient } from "@/lib/supabase/server";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -33,16 +34,6 @@ const HEADER = [
   "AgencyType",
   "AgencyID",
 ];
-
-const HONORIFIC =
-  /^(mr|mrs|ms|miss|dr|prof|sir|mme|mlle|m|herr|frau|sr|sra|srta|sig|sig\.ra|dott)\.?$/i;
-
-/** "Dr. Jane van Dijk" -> ["Jane", "van Dijk"]. */
-export function splitName(fullName: string | null): [string, string] {
-  const parts = (fullName ?? "").trim().split(/\s+/).filter(Boolean);
-  while (parts.length > 1 && HONORIFIC.test(parts[0]!)) parts.shift();
-  return [parts[0] ?? "", parts.slice(1).join(" ")];
-}
 
 export function agencyId(ref: number) {
   return `AGY-${String(ref).padStart(5, "0")}`;

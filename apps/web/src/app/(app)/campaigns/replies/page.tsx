@@ -1,4 +1,4 @@
-import { ExternalLink, Inbox } from "lucide-react";
+import { CornerUpLeft, Inbox, MessageSquareReply } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -19,6 +19,7 @@ import { LiveRefresh } from "@/components/app/live-refresh";
 import { ReplyDoneButton } from "@/components/app/reply-done-button";
 import { StatusBadge } from "@/components/app/status-badge";
 import { requireWorkspace } from "@/lib/auth/workspace";
+import { interestStatus } from "@/lib/interest-status";
 import { agenciesForEmails } from "@/lib/lead-agencies";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -38,9 +39,10 @@ type Reply = {
   preview: string | null;
   step: string | null;
   is_auto_reply: boolean;
-  unibox_url: string | null;
+  interest_status: number | null;
   received_at: string;
   handled_at: string | null;
+  replied_at: string | null;
 };
 
 /** Which replies a view shows. */
@@ -111,7 +113,7 @@ export default async function RepliesPage({ searchParams }: Props) {
   let query = supabase
     .from("campaign_replies")
     .select(
-      "id, campaign_id, campaign_name, lead_email, lead_email_normalized, eaccount, subject, preview, step, is_auto_reply, unibox_url, received_at, handled_at",
+      "id, campaign_id, campaign_name, lead_email, lead_email_normalized, eaccount, subject, preview, step, is_auto_reply, interest_status, received_at, handled_at, replied_at",
       { count: "exact" },
     )
     .eq("workspace_id", workspaceId);
@@ -267,11 +269,23 @@ export default async function RepliesPage({ searchParams }: Props) {
                           {agency.name}
                         </Link>
                       )}
-                      {r.is_auto_reply && (
-                        <StatusBadge tone="neutral" className="mt-1">
-                          Auto-reply
-                        </StatusBadge>
-                      )}
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {r.is_auto_reply && (
+                          <StatusBadge tone="neutral">Auto-reply</StatusBadge>
+                        )}
+                        {r.replied_at && (
+                          <StatusBadge tone="info">
+                            <CornerUpLeft className="size-3" /> Replied
+                          </StatusBadge>
+                        )}
+                        {interestStatus(r.interest_status) && (
+                          <StatusBadge
+                            tone={interestStatus(r.interest_status)!.tone}
+                          >
+                            {interestStatus(r.interest_status)!.label}
+                          </StatusBadge>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1.5 font-medium">
@@ -299,9 +313,12 @@ export default async function RepliesPage({ searchParams }: Props) {
                       )}
                     </td>
                     <td className="max-w-md px-4 py-3">
-                      <p className="truncate font-medium">
+                      <Link
+                        href={`/campaigns/replies/${r.id}`}
+                        className="block truncate font-medium hover:text-primary hover:underline"
+                      >
                         {r.subject || "(no subject)"}
-                      </p>
+                      </Link>
                       {r.preview && (
                         <p className="line-clamp-2 text-xs text-muted-foreground">
                           {r.preview}
@@ -310,24 +327,17 @@ export default async function RepliesPage({ searchParams }: Props) {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        {!r.is_auto_reply && (
-                          <ReplyDoneButton
-                            id={r.id}
-                            done={Boolean(r.handled_at)}
-                          />
-                        )}
-                        <a
-                          href={
-                            r.unibox_url ??
-                            "https://app.instantly.ai/app/unibox"
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          title="Open the conversation in Instantly"
-                          className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium text-primary hover:bg-accent"
+                        <ReplyDoneButton
+                          id={r.id}
+                          done={Boolean(r.handled_at)}
+                        />
+                        <Link
+                          href={`/campaigns/replies/${r.id}`}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover"
                         >
-                          Instantly <ExternalLink className="size-3.5" />
-                        </a>
+                          <MessageSquareReply className="size-3.5" />
+                          {r.is_auto_reply ? "Open" : "Reply"}
+                        </Link>
                       </div>
                     </td>
                   </tr>

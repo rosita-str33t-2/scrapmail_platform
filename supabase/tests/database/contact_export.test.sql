@@ -9,7 +9,8 @@ select plan(13);
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000e1', 'export-a@test.local'),
   ('00000000-0000-0000-0000-0000000000e2', 'export-b@test.local');
-update public.profiles set status = 'approved'
+-- Exporting is for administrators only (see inbox_and_export_access.test.sql).
+update public.profiles set status = 'approved', platform_role = 'admin'
  where user_id in ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000e2');
 insert into public.workspaces (id, name, slug) values
   ('00000000-0000-0000-0000-0000000000f1', 'Export A', 'export-a'),

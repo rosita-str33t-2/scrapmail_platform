@@ -8,7 +8,11 @@ import { requireAdmin, type AccountStatus } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-import { ResetPasswordDialog, StatusSelect } from "./user-controls";
+import {
+  AddMemberDialog,
+  ResetPasswordDialog,
+  StatusSelect,
+} from "./user-controls";
 
 export const metadata: Metadata = { title: "User management" };
 
@@ -102,7 +106,12 @@ export default async function AdminUsersPage({ searchParams }: Props) {
             }))}
           />
         }
-        actions={<LiveRefresh kinds={["users"]} />}
+        actions={
+          <>
+            <LiveRefresh kinds={["users"]} />
+            <AddMemberDialog />
+          </>
+        }
       />
 
       {!shown.length ? (

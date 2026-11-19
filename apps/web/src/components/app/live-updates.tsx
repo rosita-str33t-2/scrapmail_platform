@@ -26,6 +26,7 @@ export type LiveKind =
   | "replies"
   | "bounces"
   | "campaigns"
+  | "templates"
   | "users"
   | "workers";
 

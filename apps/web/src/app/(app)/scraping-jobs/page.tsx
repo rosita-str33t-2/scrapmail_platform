@@ -21,6 +21,7 @@ import {
   Panel,
 } from "@/components/app/page-header";
 import { requireWorkspace } from "@/lib/auth/workspace";
+import { cachedJobStats, loadJobStats } from "@/lib/scraping-stats";
 import { createClient } from "@/lib/supabase/server";
 
 import { CancelJobButton, DiscoveryForm, NewJobForm } from "./job-controls";
@@ -44,15 +45,6 @@ type Job = {
   created_at: string;
 };
 
-type Ranking = { country_code: string; searched: boolean };
-
-type Stats = {
-  job_id: string;
-  accepted: number;
-  rejected: number;
-  pending: number;
-};
-
 const TABS = [
   { value: "", label: "Jobs" },
   { value: "find", label: "Find new agencies" },
@@ -68,53 +60,45 @@ export default async function ScrapingJobsPage({ searchParams }: Props) {
   const supabase = await createClient();
   const month = new Date().toISOString().slice(0, 7) + "-01";
 
-  const [
-    { data: jobs },
-    { data: usage },
-    { count: linkSites },
-    { data: ranking },
-    { data: workers },
-    { data: statsData },
-  ] = await Promise.all([
-    supabase
-      .from("scrape_jobs")
-      .select(
-        "id, kind, title, status, total_tasks, done_tasks, failed_tasks, created_at",
-      )
-      .eq("workspace_id", workspaceId)
-      .order("created_at", { ascending: false })
-      .limit(50)
-      .returns<Job[]>(),
-    supabase
-      .from("search_usage")
-      .select("used")
-      .eq("provider", "serper")
-      .eq("month", month)
-      .maybeSingle<{ used: number }>(),
-    supabase
-      .from("agencies")
-      .select("id", { count: "exact", head: true })
-      .eq("workspace_id", workspaceId)
-      .not("website_url", "is", null)
-      .or("website_status.is.null,website_status.eq.ok"),
-    supabase.rpc("search_country_ranking", { p_workspace_id: workspaceId }),
-    supabase
-      .from("worker_status")
-      .select(
-        "worker_id, state, updated_at, concurrency, running, tasks_per_minute, loop_lag_ms, oldest_task_seconds, restarts",
-      )
-      .order("updated_at", { ascending: false })
-      .limit(20)
-      .returns<WorkerStatus[]>(),
-    supabase.rpc("recent_discovery_job_stats", {
-      p_workspace_id: workspaceId,
-    }),
-  ]);
+  const jobsQuery = supabase
+    .from("scrape_jobs")
+    .select(
+      "id, kind, title, status, total_tasks, done_tasks, failed_tasks, created_at",
+    )
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: false })
+    .limit(50)
+    .returns<Job[]>()
+    // A query runs each time it is awaited: run it once, use the result twice.
+    .then((result) => result);
 
-  const rankedCountries = (ranking ?? []) as Ranking[];
-  const stats = new Map(
-    ((statsData ?? []) as Stats[]).map((s) => [s.job_id, s]),
-  );
+  const [{ data: jobs }, jobStats, { data: usage }, { data: workers }] =
+    await Promise.all([
+      jobsQuery,
+      cachedJobStats(
+        workspaceId,
+        jobsQuery.then(({ data }) => data ?? []),
+        () => loadJobStats(supabase, workspaceId),
+      ),
+      supabase
+        .from("search_usage")
+        .select("used")
+        .eq("provider", "serper")
+        .eq("month", month)
+        .maybeSingle<{ used: number }>(),
+      supabase
+        .from("worker_status")
+        .select(
+          "worker_id, state, updated_at, concurrency, running, tasks_per_minute, loop_lag_ms, oldest_task_seconds, restarts",
+        )
+        .order("updated_at", { ascending: false })
+        .limit(20)
+        .returns<WorkerStatus[]>(),
+    ]);
+
+  const { linkSites } = jobStats;
+  const rankedCountries = jobStats.ranking;
+  const stats = new Map(jobStats.stats.map((s) => [s.job_id, s]));
 
   return (
     <>

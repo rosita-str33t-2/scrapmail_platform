@@ -22,9 +22,10 @@ const nextConfig: NextConfig = {
   experimental: {
     // Only nudge about Next.js security releases (the default, set explicitly).
     agentUpgrade: "security",
-    // Going back to a page seen in the last 30 s shows it instantly from the
-    // browser's memory (live pages still refresh themselves when data changes).
-    staleTimes: { dynamic: 30 },
+    // A page seen or prefetched (on hover) in the last 30 s shows instantly from
+    // the browser's memory; it then refreshes itself at once if it is older than
+    // a few seconds (LiveRefresh), so it never stays out of date.
+    staleTimes: { dynamic: 30, static: 30 },
     // Load only the Radix components that are used, not the whole package.
     optimizePackageImports: ["radix-ui"],
   },

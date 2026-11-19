@@ -74,7 +74,9 @@ function hrefWith(
 }
 
 export default async function ContactsPage({ searchParams }: Props) {
-  const { workspaceId } = await requireWorkspace();
+  const { workspaceId, profile } = await requireWorkspace();
+  // Exporting emails is for administrators only.
+  const canExport = profile.platform_role === "admin";
   const params = await searchParams;
   const filters = parseContactFilters(params);
   const { kind } = filters;
@@ -132,12 +134,14 @@ export default async function ContactsPage({ searchParams }: Props) {
         actions={
           <>
             <LiveRefresh kinds={["contacts", "levels"]} />
-            <ExportButton
-              href={`/contacts/export${exportQuery ? `?${exportQuery}` : ""}`}
-              count={total}
-              unit="contacts"
-              level={filters.level}
-            />
+            {canExport && (
+              <ExportButton
+                href={`/contacts/export${exportQuery ? `?${exportQuery}` : ""}`}
+                count={total}
+                unit="contacts"
+                level={filters.level}
+              />
+            )}
           </>
         }
       />
