@@ -29,7 +29,7 @@ const NAV: NavItem[] = [
   { href: "/agencies", label: "Agencies", icon: Building2 },
   { href: "/contacts", label: "Contacts", icon: Users },
   { href: "/scraping-jobs", label: "Scraping Jobs", icon: Layers },
-  { href: "#", label: "Email Campaigns", icon: Send, soon: true },
+  { href: "/campaigns", label: "Email Campaigns", icon: Send },
   { href: "#", label: "Templates", icon: FileText, soon: true },
 ];
 
