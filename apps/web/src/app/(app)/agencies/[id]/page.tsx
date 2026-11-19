@@ -82,7 +82,7 @@ export default async function AgencyPage({
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const supabase = await createClient();
   // RLS limits the agency to the user's workspace, so both load at the same time.
-  const [{ workspaceId }, { data: agency }] = await Promise.all([
+  const [, { data: agency }] = await Promise.all([
     requireWorkspace(),
     supabase
       .from("agencies")
@@ -115,11 +115,7 @@ export default async function AgencyPage({
         back={{ href: "/agencies", label: "Back to agencies" }}
         actions={
           <>
-            <LiveRefresh
-              tables={["scrape_jobs"]}
-              workspaceId={workspaceId}
-              minIntervalMs={5000}
-            />
+            <LiveRefresh kinds={["agencies", "contacts", "levels"]} />
             {agency.website_url && (
               <Button asChild variant="outline">
                 <a

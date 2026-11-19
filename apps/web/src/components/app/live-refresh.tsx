@@ -3,114 +3,107 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
+import { type LiveKind, useLiveChanges } from "./live-updates";
+
+/** At most one refresh per second. */
+const MIN_INTERVAL_MS = 1000;
 /**
- * What a page follows, checked with one tiny query each (no Realtime: streaming
- * every scraper change cost the database more than the pages need).
- * scrape_jobs: progress of active jobs. profiles: account sign-ups and changes.
+ * The database sends at most one message per 750 ms; changes right after a message
+ * are picked up by one more refresh this long after the last message.
  */
-type LiveTable = "scrape_jobs" | "profiles";
+const SETTLE_MS = 1200;
+/** While the live connection is down, refresh this often instead. */
+const FALLBACK_POLL_MS = 15_000;
 
 /**
- * Keeps the page in sync for every user and re-renders it with fresh data when
- * something changed. At most one refresh runs at a time, at most one per
- * `minIntervalMs`, and none while the tab is hidden (it catches up when shown).
+ * Keeps the page in sync for every user: re-renders it with fresh data as soon as
+ * the database reports a change to what it shows (Supabase Realtime, usually well
+ * under a second). One refresh at a time, none while the tab is hidden (it catches
+ * up when shown).
+ *
+ * `pollMs`: also refresh this often (data from outside our database, e.g. Instantly
+ * changes that send no webhook); shows when the data was last updated.
  */
 export function LiveRefresh({
-  tables,
-  workspaceId,
-  minIntervalMs = 5000,
+  kinds,
+  pollMs,
   className,
 }: {
-  tables: LiveTable[];
-  workspaceId?: string;
-  minIntervalMs?: number;
+  kinds: LiveKind[];
+  pollMs?: number;
   className?: string;
 }) {
   const router = useRouter();
-  const [connected, setConnected] = useState(false);
   const [refreshing, startRefresh] = useTransition();
   const refreshingRef = useRef(false);
-  const lastRefresh = useRef(0);
+  const last = useRef(0);
   const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const key = tables.join(",");
+  const settle = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const request = useRef<() => void>(() => {});
+  const [updatedAt, setUpdatedAt] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    refreshingRef.current = refreshing;
-  }, [refreshing]);
-
-  useEffect(() => {
-    const supabase = createClient();
-    lastRefresh.current = Date.now(); // the page was just rendered with fresh data
-
-    const schedule = (wait: number) => {
-      if (timer.current) return;
-      timer.current = setTimeout(run, Math.max(0, wait));
-    };
+    last.current = Date.now(); // the page was just rendered with fresh data
     const run = () => {
       timer.current = null;
       if (!dirty.current || document.hidden) return;
-      if (refreshingRef.current) {
-        // The previous refresh is still loading: try again later.
-        schedule(minIntervalMs);
+      const wait = last.current + MIN_INTERVAL_MS - Date.now();
+      if (refreshingRef.current || wait > 0) {
+        timer.current = setTimeout(run, Math.max(wait, 100));
         return;
       }
       dirty.current = false;
-      lastRefresh.current = Date.now();
+      last.current = Date.now();
       startRefresh(() => router.refresh());
     };
-    const onChange = () => {
+    request.current = () => {
       dirty.current = true;
-      schedule(lastRefresh.current + minIntervalMs - Date.now());
+      if (!timer.current) timer.current = setTimeout(run, 0);
     };
     const onVisible = () => {
-      if (!document.hidden && dirty.current) schedule(0);
+      if (!document.hidden && dirty.current) request.current();
     };
-
-    // Poll what the page follows; refresh only when it changed.
-    const follows = key.split(",");
-    let snapshot: string | null = null;
-    const poll = async () => {
-      if (document.hidden) return;
-      const parts = await Promise.all([
-        follows.includes("scrape_jobs")
-          ? (() => {
-              let query = supabase
-                .from("scrape_jobs")
-                .select("id, status, total_tasks, done_tasks, failed_tasks")
-                .in("status", ["queued", "running"]);
-              if (workspaceId) query = query.eq("workspace_id", workspaceId);
-              return query.order("id");
-            })()
-          : null,
-        follows.includes("profiles")
-          ? supabase
-              .from("profiles")
-              .select("user_id, status, platform_role, updated_at")
-              .order("user_id")
-          : null,
-      ]);
-      if (parts.some((p) => p?.error)) return;
-      setConnected(true);
-      const next = JSON.stringify(parts.map((p) => p?.data ?? null));
-      if (snapshot !== null && next !== snapshot) onChange();
-      snapshot = next;
-    };
-    const polling = setInterval(() => void poll(), minIntervalMs);
-    void poll();
     document.addEventListener("visibilitychange", onVisible);
-
     return () => {
-      clearInterval(polling);
       document.removeEventListener("visibilitychange", onVisible);
       if (timer.current) clearTimeout(timer.current);
+      if (settle.current) clearTimeout(settle.current);
       timer.current = null;
+      settle.current = null;
     };
-  }, [key, workspaceId, minIntervalMs, router]);
+  }, [router]);
 
+  // A finished refresh: run the next one if more changes came in meanwhile.
+  useEffect(() => {
+    refreshingRef.current = refreshing;
+    if (!refreshing) {
+      setUpdatedAt(last.current);
+      if (dirty.current) request.current();
+    }
+  }, [refreshing]);
+
+  const connected = useLiveChanges(kinds, () => {
+    request.current();
+    if (settle.current) clearTimeout(settle.current);
+    settle.current = setTimeout(() => request.current(), SETTLE_MS);
+  });
+
+  // Regular refresh for outside data, or as a fallback while disconnected.
+  const interval = pollMs ?? (connected ? null : FALLBACK_POLL_MS);
+  useEffect(() => {
+    if (!interval && !pollMs) return;
+    const tick = setInterval(() => {
+      setNow(Date.now());
+      if (interval && Date.now() - last.current >= interval) request.current();
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [interval, pollMs]);
+
+  const seconds = Math.max(0, Math.round((now - updatedAt) / 1000));
   return (
     <span
       className={cn(
@@ -122,7 +115,7 @@ export function LiveRefresh({
       )}
       title={
         connected
-          ? "Updates appear automatically"
+          ? "Connected: changes appear here within a second"
           : "Connecting to live updates…"
       }
     >
@@ -134,10 +127,21 @@ export function LiveRefresh({
           className={cn(
             "relative inline-flex size-2 rounded-full",
             connected ? "bg-success" : "bg-neutral",
+            refreshing && "animate-pulse",
           )}
         />
       </span>
       {connected ? "Live" : "Connecting"}
+      {pollMs && (
+        <span className="font-normal tabular-nums opacity-80">
+          ·{" "}
+          {refreshing
+            ? "updating…"
+            : seconds < 5
+              ? "just now"
+              : `${seconds}s ago`}
+        </span>
+      )}
     </span>
   );
 }

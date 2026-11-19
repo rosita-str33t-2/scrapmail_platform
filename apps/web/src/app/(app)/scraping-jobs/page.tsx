@@ -135,11 +135,7 @@ export default async function ScrapingJobsPage({ searchParams }: Props) {
         }
         actions={
           <>
-            <LiveRefresh
-              tables={["scrape_jobs"]}
-              workspaceId={workspaceId}
-              minIntervalMs={3000}
-            />
+            <LiveRefresh kinds={["jobs", "workers"]} />
             {tab === "" && (
               <Button asChild>
                 <Link href="/scraping-jobs?tab=find">

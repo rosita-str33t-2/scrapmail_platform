@@ -15,14 +15,17 @@ import {
   pct,
   ProgressBar,
 } from "@/components/app/campaign-ui";
-import { CampaignSectionTabs } from "@/components/app/campaign-tabs";
+import {
+  CampaignSectionTabs,
+  preloadSectionCounts,
+} from "@/components/app/campaign-tabs";
 import {
   FilterSelect,
   SearchInput,
   TableFrame,
 } from "@/components/app/data-table";
 import { EmptyState, PageHeader, Toolbar } from "@/components/app/page-header";
-import { PollRefresh } from "@/components/app/poll-refresh";
+import { LiveRefresh } from "@/components/app/live-refresh";
 import { buttonVariants } from "@/components/ui/button";
 import { requireWorkspace } from "@/lib/auth/workspace";
 import {
@@ -50,6 +53,8 @@ const TABS = [
 ] as const;
 
 export default async function CampaignsPage({ searchParams }: Props) {
+  // Tab numbers load while Instantly answers (RLS limits them).
+  void preloadSectionCounts();
   await requireWorkspace();
   const params = await searchParams;
   const tab = TABS.find((t) => t.value === (params.status ?? "")) ?? TABS[0];
@@ -62,7 +67,12 @@ export default async function CampaignsPage({ searchParams }: Props) {
       tabs={<CampaignSectionTabs active="campaigns" />}
       actions={
         <>
-          {instantlyConfigured() && <PollRefresh />}
+          {instantlyConfigured() && (
+            <LiveRefresh
+              kinds={["campaigns", "replies", "bounces"]}
+              pollMs={30_000}
+            />
+          )}
           <a
             href="https://app.instantly.ai/app/campaigns"
             target="_blank"

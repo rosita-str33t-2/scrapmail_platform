@@ -18,7 +18,7 @@ import {
   Panel,
   Toolbar,
 } from "@/components/app/page-header";
-import { PollRefresh } from "@/components/app/poll-refresh";
+import { LiveRefresh } from "@/components/app/live-refresh";
 import { TrendChart } from "@/components/app/trend-chart";
 import { buttonVariants } from "@/components/ui/button";
 import { requireWorkspace } from "@/lib/auth/workspace";
@@ -62,6 +62,19 @@ export default async function CampaignPage({ params, searchParams }: Props) {
     );
   }
 
+  type Dates = ReturnType<typeof rangeDates>;
+  const loadAnalytics = ({ start, end, totals }: Dates) =>
+    Promise.all([
+      campaignAnalytics({ id, ...totals }),
+      dailyAnalytics(id, { start, end }),
+      stepAnalytics(id, { start, end }),
+    ]);
+  // A fixed range (e.g. last 30 days) does not depend on the campaign: load the
+  // numbers at the same time as the campaign. "All time" needs its start date.
+  const fixed = rangeDates(query.range);
+  const early = fixed.range.days ? loadAnalytics(fixed) : null;
+  early?.catch(() => {}); // handled below
+
   let campaign: Campaign;
   try {
     campaign = await getCampaign(id);
@@ -78,19 +91,15 @@ export default async function CampaignPage({ params, searchParams }: Props) {
     );
   }
 
-  const { range, start, end, totals } = rangeDates(
-    query.range,
-    campaign.timestamp_created,
-  );
+  const dates = early
+    ? fixed
+    : rangeDates(query.range, campaign.timestamp_created);
+  const { range, start, end } = dates;
   let summary: CampaignAnalytics | undefined;
   let daily: DailyAnalytics[];
   let steps: StepAnalytics[];
   try {
-    [[summary], daily, steps] = await Promise.all([
-      campaignAnalytics({ id, ...totals }),
-      dailyAnalytics(id, { start, end }),
-      stepAnalytics(id, { start, end }),
-    ]);
+    [[summary], daily, steps] = await (early ?? loadAnalytics(dates));
   } catch (error) {
     return (
       <>
@@ -233,7 +242,10 @@ export default async function CampaignPage({ params, searchParams }: Props) {
         actions={
           <>
             <CampaignStatusBadge status={campaign.status} />
-            <PollRefresh />
+            <LiveRefresh
+              kinds={["campaigns", "replies", "bounces"]}
+              pollMs={30_000}
+            />
             <a
               href={instantlyCampaignUrl(id)}
               target="_blank"
