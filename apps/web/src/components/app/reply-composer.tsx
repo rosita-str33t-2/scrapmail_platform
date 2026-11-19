@@ -4,6 +4,7 @@ import {
   BookmarkPlus,
   FileText,
   Loader2,
+  PenLine,
   Send,
   Trash2,
   TriangleAlert,
@@ -22,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { popoverClass } from "@/components/ui/styles";
+import { SIGNATURE_HTML } from "@/lib/email-signature";
 import type { ReplyTemplate } from "@/lib/inbox";
 import {
   deleteReplyTemplate,
@@ -30,6 +32,7 @@ import {
 } from "@/lib/reply-actions";
 import { cn } from "@/lib/utils";
 
+import { EmailBody } from "./email-body";
 import type { EmailEditorHandle } from "./email-editor";
 
 // The editor is only downloaded on conversation pages, after the page is shown.
@@ -72,6 +75,7 @@ export function ReplyComposer({
   const [error, setError] = useState<string | null>(null);
   const [sending, startSending] = useTransition();
   const [saveOpen, setSaveOpen] = useState(false);
+  const [showSignature, setShowSignature] = useState(false);
 
   const send = () => {
     if (sending || !editor.current) return;
@@ -109,8 +113,16 @@ export function ReplyComposer({
 
       <div className="grid gap-2 text-sm sm:grid-cols-[4.5rem_1fr]">
         <span className="pt-2 text-muted-foreground">From</span>
-        <div className="flex h-9 items-center truncate rounded-md border border-dashed px-3 text-muted-foreground">
-          {from ?? "Unknown account"}
+        <div
+          className="flex h-9 min-w-0 items-center gap-2 rounded-md border border-dashed px-3"
+          title="The reply is sent through Instantly from this business address. No email login is needed."
+        >
+          <span className="truncate font-medium">
+            {from ?? "Unknown account"}
+          </span>
+          <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
+            · business address that got this email, sent via Instantly
+          </span>
         </div>
         <span className="pt-2 text-muted-foreground">To</span>
         <div className="flex items-center gap-2">
@@ -166,6 +178,23 @@ export function ReplyComposer({
       <div className="mt-3">
         <EmailEditor editorRef={editor} onSubmit={send} />
       </div>
+
+      <details
+        className="group mt-2 rounded-md border bg-muted/30"
+        onToggle={(e) => setShowSignature(e.currentTarget.open)}
+      >
+        <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs text-muted-foreground select-none">
+          <PenLine className="size-3.5" />
+          Signature added automatically below your message
+          <span className="ml-auto text-primary group-open:hidden">Show</span>
+          <span className="ml-auto hidden text-primary group-open:inline">
+            Hide
+          </span>
+        </summary>
+        <div className="px-3 pb-3">
+          {showSignature && <EmailBody html={SIGNATURE_HTML} text={null} />}
+        </div>
+      </details>
 
       {error && (
         <p

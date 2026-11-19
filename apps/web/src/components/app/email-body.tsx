@@ -95,6 +95,7 @@ function HtmlBody({
   const doc = useMemo(
     () => `<!doctype html><html><head><meta charset="utf-8">
 <base target="_blank">
+<meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: http: data: cid:; style-src 'unsafe-inline'; font-src https: data:">
 <style>
   html,body{margin:0;padding:0;background:#fff;color:#1f2328;}

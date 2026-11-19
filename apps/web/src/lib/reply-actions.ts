@@ -16,6 +16,7 @@ import {
 } from "@/lib/instantly-api";
 import { createClient } from "@/lib/supabase/server";
 import { fillVariables, htmlToText } from "@/lib/email-content";
+import { withSignature } from "@/lib/email-signature";
 
 export type ActionResult =
   { ok: true; id?: string } | { ok: false; error: string };
@@ -156,12 +157,17 @@ export async function sendReply(input: {
     email: reply.lead_email,
     senderEmail: reply.eaccount,
   };
-  const html = fillVariables(parsed.data.html, values, { html: true });
-  const text =
+  const body = fillVariables(parsed.data.html, values, { html: true });
+  // The company signature always goes at the bottom (lib/email-signature.ts).
+  const { html, text } = withSignature(
+    body,
     fillVariables(parsed.data.text, values, { html: false }) ||
-    htmlToText(html);
+      htmlToText(body),
+  );
   const finalSubject = fillVariables(subject, values, { html: false });
 
+  // Sent through Instantly from the business address that received the lead's
+  // email: nobody on the team needs their own mailbox or login for it.
   try {
     const sent = await replyToEmail({
       replyToId: target,
@@ -185,6 +191,12 @@ export async function sendReply(input: {
       userId,
     });
   } catch (error) {
+    if (error instanceof InstantlyError && error.status === 404) {
+      return {
+        ok: false,
+        error: `The business address ${reply.eaccount} is no longer connected in Instantly, so the reply cannot be sent from it. Reconnect it in Instantly, then send again.`,
+      };
+    }
     return failure(error);
   }
 
