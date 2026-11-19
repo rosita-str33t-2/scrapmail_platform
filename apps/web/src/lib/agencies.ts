@@ -12,6 +12,7 @@ export const AGENCY_SORT_FIELDS = {
   relevance: "relevance",
   checked: "last_checked_at",
   added: "created_at",
+  priority: "priority",
 } as const;
 export type AgencySortField = keyof typeof AGENCY_SORT_FIELDS;
 
@@ -55,7 +56,12 @@ export type AgencyRow = {
   priority: number | null;
   origin: string;
   ref: number;
-  agency_contacts: { email: string | null; full_name?: string | null }[];
+  agency_contacts: {
+    email: string | null;
+    id?: string;
+    full_name?: string | null;
+    email_levels?: { level: number } | null;
+  }[];
 };
 
 type Params = Record<string, string | string[] | undefined>;
