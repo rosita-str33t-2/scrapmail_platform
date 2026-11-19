@@ -22,10 +22,38 @@ Find out about our services: https://seatlaneb2b.com/
 COMPANY CONFIDENTIAL
 This e-mail and any attachments are confidential and intended solely for the addressee and may also be privileged or exempt from disclosure under applicable law. If you are not the addressee, or have received this e-mail in error, please notify the sender immediately, delete it from your system and do not copy, disclose or otherwise act upon any part of this e-mail or its attachments.`;
 
-/** The message as sent: what the user wrote, then the signature. */
+/**
+ * Gmail folds away ("•••") any block it already showed earlier in the same
+ * conversation, and our first campaign email ends with this same signature. A
+ * small invisible reference, different in every email, makes each signature
+ * unique, so it is always shown in full. Nothing of it is visible.
+ */
+function uniqueSignature() {
+  const ref = `ref ${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const hidden = `<span style="font-size:0px;line-height:0px;color:#ffffff;opacity:0;max-height:0px;overflow:hidden;mso-hide:all;">${ref}</span>`;
+  // Inside every part of the signature, so no part of it matches the earlier one.
+  return SIGNATURE_HTML.replace(/<\/div>/g, `${hidden}</div>`);
+}
+
+/** Empty lines and spaces at the end of a message (they would push the signature down). */
+const TRAILING_EMPTY =
+  /(?:\s|&nbsp;|<br\s*\/?>|<(p|div)>(?:\s|&nbsp;|<br\s*\/?>)*<\/\1>)+$/i;
+
+/**
+ * The message as sent: what the user wrote, one blank line, then the signature
+ * (the same spacing as in the campaign emails).
+ */
 export function withSignature(html: string, text: string) {
+  const body = html.replace(TRAILING_EMPTY, "");
+  // A paragraph already ends with a blank line in email apps; a plain line or a
+  // <div> needs one added.
+  const gap = /<\/(p|h[1-6]|ul|ol|blockquote)>$/i.test(body)
+    ? ""
+    : /<\/div>$/i.test(body)
+      ? "<br>"
+      : "<br><br>";
   return {
-    html: `${html}<br>${SIGNATURE_HTML}`,
+    html: `${body}${gap}${uniqueSignature()}`,
     text: `${text.trimEnd()}\n\n${SIGNATURE_TEXT}`,
   };
 }
