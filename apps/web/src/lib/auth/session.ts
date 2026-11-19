@@ -5,6 +5,8 @@ import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 
+import { remembered } from "./account-cache";
+
 export type AccountStatus = "pending" | "approved" | "rejected" | "suspended";
 
 export type Profile = {
@@ -30,14 +32,15 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
   const userId = await getUserId();
   if (!userId) return null;
 
-  const supabase = await createClient();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("user_id, email, full_name, status, platform_role")
-    .eq("user_id", userId)
-    .maybeSingle<Profile>();
-
-  return profile ?? null;
+  return remembered(`profile:${userId}`, async () => {
+    const supabase = await createClient();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("user_id, email, full_name, status, platform_role")
+      .eq("user_id", userId)
+      .maybeSingle<Profile>();
+    return profile ?? null;
+  });
 });
 
 /** Require a signed-in, approved account; otherwise redirect. */

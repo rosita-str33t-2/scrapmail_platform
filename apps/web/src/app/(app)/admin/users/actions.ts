@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { forgetAccount } from "@/lib/auth/account-cache";
 import { requireAdmin } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -58,6 +59,7 @@ export async function setAccountStatus(
       ...(approved ? { email_confirm: true } : {}),
     },
   );
+  forgetAccount(parsed.data.userId);
   if (banError) return { ok: false, error: banError.message };
 
   revalidatePath("/admin/users");
@@ -101,5 +103,88 @@ export async function resetUserPassword(
   return {
     ok: true,
     message: "Password updated. Share it with the user securely.",
+  };
+}
+
+const memberSchema = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .min(1, "Please enter the name")
+    .max(200, "The name is too long"),
+  email: z.email("Please enter a valid email address").max(320),
+  password: passwordSchema.shape.password,
+});
+
+/**
+ * The administrator registers a team member directly: the account is created,
+ * confirmed and approved at once and joins the workspace, so the member can sign
+ * in right away. Share the password with them securely.
+ */
+export async function createMember(input: {
+  fullName: string;
+  email: string;
+  password: string;
+}): Promise<ActionResult> {
+  await requireAdmin();
+  const parsed = memberSchema.safeParse({
+    ...input,
+    email: input.email.trim().toLowerCase(),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid request",
+    };
+  }
+
+  const admin = createAdminClient();
+  const { data: created, error: createError } =
+    await admin.auth.admin.createUser({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      email_confirm: true,
+      user_metadata: { full_name: parsed.data.fullName },
+    });
+  if (createError || !created.user) {
+    return {
+      ok: false,
+      error: /already|registered|exists/i.test(createError?.message ?? "")
+        ? "An account with this email already exists."
+        : (createError?.message ?? "The account could not be created."),
+    };
+  }
+  const userId = created.user.id;
+
+  const supabase = await createClient();
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("id")
+    .order("created_at")
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+  // Approve and add to the workspace (checked again in the database).
+  const { error } = await supabase.rpc("admin_review_account", {
+    p_user_id: userId,
+    p_status: "approved",
+    p_workspace_id: workspace?.id ?? null,
+    p_role: "member",
+  });
+  if (error) {
+    await admin.auth.admin.deleteUser(userId); // no half-created accounts
+    return { ok: false, error: error.message };
+  }
+  await admin
+    .from("profiles")
+    .update({
+      full_name: parsed.data.fullName,
+      password_changed_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId);
+
+  revalidatePath("/admin/users");
+  return {
+    ok: true,
+    message: `${parsed.data.fullName} can now sign in with ${parsed.data.email}.`,
   };
 }

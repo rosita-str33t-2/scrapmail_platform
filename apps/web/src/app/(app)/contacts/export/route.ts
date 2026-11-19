@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-import { requireWorkspace } from "@/lib/auth/workspace";
+import { requireExportAdmin } from "@/lib/auth/workspace";
 import { bestFirst, parseContactFilters, queryContacts } from "@/lib/contacts";
 import {
   EXPORT_MAX_PAGES,
@@ -35,7 +35,9 @@ type Row = {
  * exported addresses go up one level.
  */
 export async function GET(request: NextRequest) {
-  const { workspaceId } = await requireWorkspace();
+  const access = await requireExportAdmin();
+  if (access.denied) return access.denied;
+  const { workspaceId } = access;
   const filters = parseContactFilters(
     Object.fromEntries(request.nextUrl.searchParams),
   );

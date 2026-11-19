@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { HoverPrefetchLink } from "./hover-prefetch-link";
+
 /**
  * The page's top bar, as in Instantly: title on the left, a divider, optional
  * tabs, and the page actions on the right. Sticks to the top while scrolling.
@@ -81,7 +83,7 @@ export function PageTabs({ tabs, label }: { tabs: PageTab[]; label: string }) {
       className="-mb-px flex [scrollbar-width:none] gap-6 overflow-x-auto"
     >
       {tabs.map((tab) => (
-        <Link
+        <HoverPrefetchLink
           key={tab.label}
           href={tab.href}
           scroll={false}
@@ -90,7 +92,7 @@ export function PageTabs({ tabs, label }: { tabs: PageTab[]; label: string }) {
         >
           {tab.label}
           {tab.count !== undefined && <TabCount value={tab.count} />}
-        </Link>
+        </HoverPrefetchLink>
       ))}
     </nav>
   );

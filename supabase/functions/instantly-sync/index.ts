@@ -80,6 +80,9 @@ type Email = {
   i_status?: number | null;
   thread_id?: string | null;
   content_preview?: string | null;
+  to_address_email_list?: string | null;
+  cc_address_email_list?: string | null;
+  body?: { html?: string | null; text?: string | null } | null;
 };
 
 type Lead = {
@@ -165,6 +168,9 @@ async function syncReplies(names: Map<string, string>) {
     const knownAuto = new Map(
       (known ?? []).map((k) => [k.id as string, k.is_auto_reply as boolean]),
     );
+    // New emails are read in full once: auto-reply flag and the message itself
+    // (kept for the conversation view, so it opens without asking Instantly).
+    const messages: Record<string, unknown>[] = [];
     for (const e of withLead) {
       if (knownAuto.has(e.id)) {
         e.is_auto_reply = knownAuto.get(e.id) ? 1 : 0;
@@ -176,8 +182,27 @@ async function syncReplies(names: Map<string, string>) {
         );
         e.is_auto_reply = full.is_auto_reply ?? 0;
         e.i_status = full.i_status ?? e.i_status;
+        messages.push({
+          id: e.id,
+          workspace_id: WORKSPACE,
+          thread_id: full.thread_id ?? e.thread_id ?? null,
+          lead_email: e.lead,
+          direction: "received",
+          campaign_id: e.campaign_id ?? null,
+          eaccount: e.eaccount ?? null,
+          from_email: full.from_address_email ?? e.from_address_email ?? null,
+          to_emails: full.to_address_email_list ?? null,
+          cc_emails: full.cc_address_email_list ?? null,
+          subject: full.subject ?? e.subject ?? null,
+          body_html: full.body?.html ?? null,
+          body_text: full.body?.text ?? null,
+          is_auto_reply: full.is_auto_reply === 1,
+          step: e.step ?? null,
+          sent_at: e.timestamp_email ?? e.timestamp_created,
+          synced_at: new Date().toISOString(),
+        });
       } catch {
-        // keep the list values
+        // keep the list values; the conversation view reads it from Instantly
       }
     }
     const rows = withLead.map((e) => ({
@@ -203,6 +228,12 @@ async function syncReplies(names: Map<string, string>) {
         .upsert(rows, { onConflict: "id" });
       if (error) throw new Error(`replies: ${error.message}`);
       saved += rows.length;
+    }
+    if (messages.length) {
+      const { error } = await db
+        .from("campaign_messages")
+        .upsert(messages, { onConflict: "id" });
+      if (error) throw new Error(`messages: ${error.message}`);
     }
     for (const e of res.items) {
       if (!newest || e.timestamp_created > newest) newest = e.timestamp_created;

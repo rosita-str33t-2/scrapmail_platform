@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { parseFilters, queryAgencies } from "@/lib/agencies";
-import { requireWorkspace } from "@/lib/auth/workspace";
+import { requireExportAdmin } from "@/lib/auth/workspace";
 import { inLevel, parseLevel } from "@/lib/contacts";
 import {
   EXPORT_MAX_PAGES,
@@ -18,7 +18,9 @@ import { createClient } from "@/lib/supabase/server";
  * number of emails. The exported addresses go up one level.
  */
 export async function GET(request: NextRequest) {
-  const { workspaceId } = await requireWorkspace();
+  const access = await requireExportAdmin();
+  if (access.denied) return access.denied;
+  const { workspaceId } = access;
   const params = request.nextUrl.searchParams;
   const filters = {
     ...parseFilters(Object.fromEntries(params)),

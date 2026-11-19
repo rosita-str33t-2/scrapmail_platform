@@ -3,6 +3,15 @@
 import { revalidatePath } from "next/cache";
 
 import { requireWorkspace } from "@/lib/auth/workspace";
+
+/** Export levels are part of exporting: administrators only. */
+async function requireAdminWorkspace() {
+  const workspace = await requireWorkspace();
+  if (workspace.profile.platform_role !== "admin") {
+    throw new Error("Only administrators can export emails.");
+  }
+  return workspace;
+}
 import { createClient } from "@/lib/supabase/server";
 
 export type LevelState = {
@@ -14,7 +23,7 @@ export type LevelState = {
 
 /** Shown in the export panel (loaded when it opens). */
 export async function getLevelState(): Promise<LevelState> {
-  const { workspaceId } = await requireWorkspace();
+  const { workspaceId } = await requireAdminWorkspace();
   const supabase = await createClient();
   const [raised, last] = await Promise.all([
     supabase
@@ -42,7 +51,7 @@ function refreshLists() {
 
 /** The emails of the most recent export go down one level. */
 export async function undoLastExport(): Promise<LevelState> {
-  const { workspaceId } = await requireWorkspace();
+  const { workspaceId } = await requireAdminWorkspace();
   const supabase = await createClient();
   const { error } = await supabase.rpc("undo_last_contact_export", {
     p_workspace_id: workspaceId,
@@ -54,7 +63,7 @@ export async function undoLastExport(): Promise<LevelState> {
 
 /** Every email back to level 0. */
 export async function resetAllLevels(): Promise<LevelState> {
-  const { workspaceId } = await requireWorkspace();
+  const { workspaceId } = await requireAdminWorkspace();
   const supabase = await createClient();
   const { error } = await supabase.rpc("reset_email_levels", {
     p_workspace_id: workspaceId,

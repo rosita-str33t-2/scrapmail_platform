@@ -50,7 +50,9 @@ const WEBSITE_STATUS: Record<
 };
 
 export default async function AgenciesPage({ searchParams }: Props) {
-  const { workspaceId } = await requireWorkspace();
+  const { workspaceId, profile } = await requireWorkspace();
+  // Exporting emails is for administrators only.
+  const canExport = profile.platform_role === "admin";
   const params = await searchParams;
   const filters = parseFilters(params);
 
@@ -87,11 +89,13 @@ export default async function AgenciesPage({ searchParams }: Props) {
         actions={
           <>
             <LiveRefresh kinds={["agencies", "contacts", "levels"]} />
-            <ExportButton
-              href={`/agencies/export${exportQuery ? `?${exportQuery}` : ""}`}
-              count={total}
-              unit="agencies"
-            />
+            {canExport && (
+              <ExportButton
+                href={`/agencies/export${exportQuery ? `?${exportQuery}` : ""}`}
+                count={total}
+                unit="agencies"
+              />
+            )}
           </>
         }
       />

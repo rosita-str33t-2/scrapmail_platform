@@ -10,13 +10,13 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Tooltip } from "radix-ui";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { HoverPrefetchLink } from "./hover-prefetch-link";
 import { RepliesBadge } from "./replies-badge";
 
 type NavItem = {
@@ -39,7 +39,7 @@ const NAV: NavItem[] = [
     icon: Send,
     repliesBadge: true,
   },
-  { href: "#", label: "Templates", icon: FileText, soon: true },
+  { href: "/templates", label: "Templates", icon: FileText },
 ];
 
 const ADMIN_NAV: NavItem[] = [
@@ -107,7 +107,7 @@ export function RailNav({ isAdmin }: { isAdmin: boolean }) {
     return (
       <li key={item.label}>
         <RailTooltip label={item.label}>
-          <Link
+          <HoverPrefetchLink
             href={item.href}
             aria-label={item.label}
             aria-current={active ? "page" : undefined}
@@ -123,7 +123,7 @@ export function RailNav({ isAdmin }: { isAdmin: boolean }) {
             {item.repliesBadge && (
               <RepliesBadge className="absolute -top-1.5 -right-1.5" />
             )}
-          </Link>
+          </HoverPrefetchLink>
         </RailTooltip>
       </li>
     );
@@ -179,7 +179,7 @@ export function DrawerNav({
     }
     return (
       <li key={item.label}>
-        <Link
+        <HoverPrefetchLink
           href={item.href}
           onClick={onNavigate}
           aria-current={active ? "page" : undefined}
@@ -193,7 +193,7 @@ export function DrawerNav({
           <Icon className="size-[18px]" strokeWidth={1.75} />
           {item.label}
           {item.repliesBadge && <RepliesBadge className="ml-auto" />}
-        </Link>
+        </HoverPrefetchLink>
       </li>
     );
   };
