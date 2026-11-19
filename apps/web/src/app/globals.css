@@ -54,6 +54,9 @@
   --info: #0068d6;
   --neutral-surface: #f0f1f4;
   --neutral: #5f636b;
+  /* Single-series trend charts (sent, replies) */
+  --chart-1: #0072e5;
+  --chart-2: #12924f;
 }
 
 .dark {
@@ -98,6 +101,8 @@
   --info: #4da6ff;
   --neutral-surface: #232325;
   --neutral: #a3a6ad;
+  --chart-1: #3b9bff;
+  --chart-2: #05df72;
 }
 
 @theme inline {

@@ -17,11 +17,15 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { RepliesBadge } from "./replies-badge";
+
 type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
   soon?: boolean;
+  /** Shows the number of new replies on the item. */
+  repliesBadge?: boolean;
 };
 
 const NAV: NavItem[] = [
@@ -29,7 +33,12 @@ const NAV: NavItem[] = [
   { href: "/agencies", label: "Agencies", icon: Building2 },
   { href: "/contacts", label: "Contacts", icon: Users },
   { href: "/scraping-jobs", label: "Scraping Jobs", icon: Layers },
-  { href: "#", label: "Email Campaigns", icon: Send, soon: true },
+  {
+    href: "/campaigns",
+    label: "Email Campaigns",
+    icon: Send,
+    repliesBadge: true,
+  },
   { href: "#", label: "Templates", icon: FileText, soon: true },
 ];
 
@@ -104,13 +113,16 @@ export function RailNav({ isAdmin }: { isAdmin: boolean }) {
             aria-current={active ? "page" : undefined}
             className={cn(
               base,
-              "outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+              "relative outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
               active
                 ? "bg-sidebar-accent text-sidebar-accent-foreground"
                 : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
             )}
           >
             <Icon className="size-[18px]" strokeWidth={1.75} />
+            {item.repliesBadge && (
+              <RepliesBadge className="absolute -top-1.5 -right-1.5" />
+            )}
           </Link>
         </RailTooltip>
       </li>
@@ -180,6 +192,7 @@ export function DrawerNav({
         >
           <Icon className="size-[18px]" strokeWidth={1.75} />
           {item.label}
+          {item.repliesBadge && <RepliesBadge className="ml-auto" />}
         </Link>
       </li>
     );

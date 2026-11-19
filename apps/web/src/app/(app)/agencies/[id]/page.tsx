@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { LiveRefresh } from "@/components/app/live-refresh";
 import { PageHeader } from "@/components/app/page-header";
 import { RelevanceBadge } from "@/components/app/relevance-badge";
+import { LevelBadge } from "@/components/app/level-badge";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { countryName } from "@/lib/countries";
@@ -53,6 +54,7 @@ type Agency = {
     email_original: string | null;
     email_status: string | null;
     email_note: string | null;
+    email_levels: { level: number; blocked: string | null } | null;
   }[];
   agency_sources: {
     id: number;
@@ -85,7 +87,7 @@ export default async function AgencyPage({
     supabase
       .from("agencies")
       .select(
-        "id, name, identity_key, website_url, website_title, website_status, country_code, country_name, city, address, phone, description, last_checked_at, created_at, relevance, relevance_keywords, agency_type, priority, ref, origin, agency_contacts(id, email, full_name, job_title, is_role_address, source, email_original, email_status, email_note), agency_sources(id, source_type, source_name, source_ref, observed_at)",
+        "id, name, identity_key, website_url, website_title, website_status, country_code, country_name, city, address, phone, description, last_checked_at, created_at, relevance, relevance_keywords, agency_type, priority, ref, origin, agency_contacts(id, email, full_name, job_title, is_role_address, source, email_original, email_status, email_note, email_levels(level, blocked)), agency_sources(id, source_type, source_name, source_ref, observed_at)",
       )
       .eq("id", id)
       .maybeSingle<Agency>(),
@@ -194,6 +196,7 @@ export default async function AgencyPage({
                   <th className="py-2 font-semibold">Name</th>
                   <th className="py-2 font-semibold">Title</th>
                   <th className="py-2 font-semibold">Source</th>
+                  <th className="py-2 font-semibold">Level</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -235,6 +238,18 @@ export default async function AgencyPage({
                     <td className="py-2">{c.full_name ?? "—"}</td>
                     <td className="py-2">{c.job_title ?? "—"}</td>
                     <td className="py-2 capitalize">{c.source}</td>
+                    <td className="py-2">
+                      {c.email &&
+                        (c.email_levels?.blocked ? (
+                          <StatusBadge tone="danger" className="normal-case">
+                            {c.email_levels.blocked === "bounced"
+                              ? "Bounced"
+                              : "Unsubscribed"}
+                          </StatusBadge>
+                        ) : (
+                          <LevelBadge level={c.email_levels?.level ?? 0} />
+                        ))}
+                    </td>
                   </tr>
                 ))}
               </tbody>

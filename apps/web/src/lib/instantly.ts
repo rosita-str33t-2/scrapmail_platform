@@ -1,8 +1,15 @@
 import "server-only";
 
+import { type ExportLevel, levelRange } from "@/lib/contacts";
 import { countryName } from "@/lib/countries";
+import type { createClient } from "@/lib/supabase/server";
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
 /** One exported email. */
 export type ExportRow = {
+  /** The contact the row comes from (its address goes up one level). */
+  contact_id: string;
   email: string;
   full_name: string | null;
   company: string;
@@ -118,4 +125,49 @@ export function csvResponse(rows: ExportRow[], name: string) {
       "X-Exported-Count": String(rows.length),
     },
   });
+}
+
+/**
+ * Records the export (one batch), raises the level of its addresses by 1 and returns
+ * the CSV. The database takes the rows again under a lock and skips any address that
+ * is no longer within the level range (e.g. exported a moment ago by someone else),
+ * so the same address can never be exported twice at the same level.
+ */
+export async function recordExport(
+  supabase: Supabase,
+  workspaceId: string,
+  rows: ExportRow[],
+  level: "" | ExportLevel,
+  name: string,
+) {
+  if (rows.length === 0) {
+    return new Response(
+      level
+        ? "No emails left at this level for the current filters."
+        : "No emails match the current filters.",
+      { status: 409 },
+    );
+  }
+  const { min, max } = levelRange(level);
+  const { data, error } = await supabase.rpc("record_contact_export", {
+    p_workspace_id: workspaceId,
+    p_contact_ids: rows.map((r) => r.contact_id),
+    p_level_min: min,
+    p_level_max: max,
+  });
+  if (error) {
+    console.error("recording the export failed:", error.message);
+    return new Response("The export failed. Please try again.", {
+      status: 500,
+    });
+  }
+  const taken = new Set((data as { contact_ids: string[] }).contact_ids);
+  const exported = rows.filter((r) => taken.has(r.contact_id));
+  if (exported.length === 0) {
+    return new Response(
+      "These emails were just exported by someone else. Please try again.",
+      { status: 409 },
+    );
+  }
+  return csvResponse(exported, name);
 }

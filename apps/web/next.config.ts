@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
     root: path.join(__dirname, "../.."),
   },
   experimental: {
+    // Only nudge about Next.js security releases (the default, set explicitly).
+    agentUpgrade: "security",
     // Going back to a page seen in the last 30 s shows it instantly from the
     // browser's memory (live pages still refresh themselves when data changes).
     staleTimes: { dynamic: 30 },

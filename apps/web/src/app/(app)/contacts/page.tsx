@@ -16,6 +16,7 @@ import {
   PageTabs,
   Toolbar,
 } from "@/components/app/page-header";
+import { LevelBadge } from "@/components/app/level-badge";
 import { StatusBadge } from "@/components/app/status-badge";
 import { requireWorkspace } from "@/lib/auth/workspace";
 import {
@@ -24,6 +25,7 @@ import {
   queryContacts,
 } from "@/lib/contacts";
 import { countryName } from "@/lib/countries";
+import { LEVEL_OPTIONS } from "@/lib/export-level-options";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Contacts" };
@@ -39,6 +41,7 @@ type Contact = {
   email_status: EmailStatus | null;
   email_note: string | null;
   agencies: { id: string; name: string; country_code: string | null } | null;
+  export_level: number;
 };
 
 type EmailStatus =
@@ -137,6 +140,7 @@ export default async function ContactsPage({ searchParams }: Props) {
               href={`/contacts/export${exportQuery ? `?${exportQuery}` : ""}`}
               count={total}
               unit="contacts"
+              level={filters.level}
             />
           </>
         }
@@ -162,6 +166,11 @@ export default async function ContactsPage({ searchParams }: Props) {
             { value: "B", label: "B · Sports & event travel" },
             { value: "C", label: "C · Travel & concierge" },
           ]}
+        />
+        <FilterSelect
+          param="level"
+          label="Level"
+          options={[{ value: "", label: "Any level" }, ...LEVEL_OPTIONS]}
         />
         <FilterSelect
           param="source"
@@ -196,6 +205,12 @@ export default async function ContactsPage({ searchParams }: Props) {
                 <th className="px-4">Agency</th>
                 <th className="px-4">Country</th>
                 <th className="px-4">Source</th>
+                <th
+                  className="px-4"
+                  title="How many times the email was exported"
+                >
+                  Level
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -250,6 +265,9 @@ export default async function ContactsPage({ searchParams }: Props) {
                     >
                       {c.source === "website" ? "website" : "import"}
                     </StatusBadge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <LevelBadge level={c.export_level} />
                   </td>
                 </tr>
               ))}
