@@ -217,6 +217,16 @@ export default async function CampaignPage({ params, searchParams }: Props) {
             label="Campaign"
             tabs={[
               { label: "Analytics", href: `/campaigns/${id}`, active: true },
+              {
+                label: "Replies",
+                href: `/campaigns/replies?view=all&campaign=${id}`,
+                active: false,
+              },
+              {
+                label: "Bounces",
+                href: `/campaigns/bounces?type=all&campaign=${id}`,
+                active: false,
+              },
             ]}
           />
         }

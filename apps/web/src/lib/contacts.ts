@@ -101,7 +101,9 @@ export function queryContacts(
       `${columns}, export_level, agencies${byAgency ? "!inner" : ""}(${agencyColumns})`,
       count ? { count: "exact" } : undefined,
     )
-    .eq("workspace_id", workspaceId);
+    .eq("workspace_id", workspaceId)
+    // Bounced or unsubscribed in Instantly: never shown for export.
+    .is("blocked", null);
   const { min, max } = levelRange(filters.level);
   if (min !== null) query = query.gte("export_level", min);
   if (max !== null) query = query.lte("export_level", max);

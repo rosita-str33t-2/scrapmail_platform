@@ -60,7 +60,7 @@ export type AgencyRow = {
     email: string | null;
     id?: string;
     full_name?: string | null;
-    email_levels?: { level: number } | null;
+    email_levels?: { level: number; blocked?: string | null } | null;
   }[];
 };
 

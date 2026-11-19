@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await queryAgencies(workspaceId, filters, {
       limit: EXPORT_PAGE_SIZE,
       offset: page * EXPORT_PAGE_SIZE,
-      contactColumns: "id, email, full_name, email_levels(level)",
+      contactColumns: "id, email, full_name, email_levels(level, blocked)",
       count: false,
     });
     if (error) {
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     }
     for (const a of data ?? []) {
       for (const c of a.agency_contacts) {
-        if (!c.email || !c.id) continue;
+        if (!c.email || !c.id || c.email_levels?.blocked) continue;
         if (level && !inLevel(c.email_levels?.level ?? 0, level)) continue;
         out.add({
           contact_id: c.id,

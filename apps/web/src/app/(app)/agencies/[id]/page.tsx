@@ -54,7 +54,7 @@ type Agency = {
     email_original: string | null;
     email_status: string | null;
     email_note: string | null;
-    email_levels: { level: number } | null;
+    email_levels: { level: number; blocked: string | null } | null;
   }[];
   agency_sources: {
     id: number;
@@ -87,7 +87,7 @@ export default async function AgencyPage({
     supabase
       .from("agencies")
       .select(
-        "id, name, identity_key, website_url, website_title, website_status, country_code, country_name, city, address, phone, description, last_checked_at, created_at, relevance, relevance_keywords, agency_type, priority, ref, origin, agency_contacts(id, email, full_name, job_title, is_role_address, source, email_original, email_status, email_note, email_levels(level)), agency_sources(id, source_type, source_name, source_ref, observed_at)",
+        "id, name, identity_key, website_url, website_title, website_status, country_code, country_name, city, address, phone, description, last_checked_at, created_at, relevance, relevance_keywords, agency_type, priority, ref, origin, agency_contacts(id, email, full_name, job_title, is_role_address, source, email_original, email_status, email_note, email_levels(level, blocked)), agency_sources(id, source_type, source_name, source_ref, observed_at)",
       )
       .eq("id", id)
       .maybeSingle<Agency>(),
@@ -239,9 +239,16 @@ export default async function AgencyPage({
                     <td className="py-2">{c.job_title ?? "—"}</td>
                     <td className="py-2 capitalize">{c.source}</td>
                     <td className="py-2">
-                      {c.email && (
-                        <LevelBadge level={c.email_levels?.level ?? 0} />
-                      )}
+                      {c.email &&
+                        (c.email_levels?.blocked ? (
+                          <StatusBadge tone="danger" className="normal-case">
+                            {c.email_levels.blocked === "bounced"
+                              ? "Bounced"
+                              : "Unsubscribed"}
+                          </StatusBadge>
+                        ) : (
+                          <LevelBadge level={c.email_levels?.level ?? 0} />
+                        ))}
                     </td>
                   </tr>
                 ))}

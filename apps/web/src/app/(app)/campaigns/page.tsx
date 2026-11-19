@@ -7,7 +7,6 @@ import {
   Trophy,
 } from "lucide-react";
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import Link from "next/link";
 
 import {
@@ -16,13 +15,13 @@ import {
   pct,
   ProgressBar,
 } from "@/components/app/campaign-ui";
-import { SearchInput, TableFrame } from "@/components/app/data-table";
+import { CampaignSectionTabs } from "@/components/app/campaign-tabs";
 import {
-  EmptyState,
-  PageHeader,
-  PageTabs,
-  Toolbar,
-} from "@/components/app/page-header";
+  FilterSelect,
+  SearchInput,
+  TableFrame,
+} from "@/components/app/data-table";
+import { EmptyState, PageHeader, Toolbar } from "@/components/app/page-header";
 import { PollRefresh } from "@/components/app/poll-refresh";
 import { buttonVariants } from "@/components/ui/button";
 import { requireWorkspace } from "@/lib/auth/workspace";
@@ -40,7 +39,7 @@ export const metadata: Metadata = { title: "Email Campaigns" };
 
 type Props = { searchParams: Promise<Record<string, string | undefined>> };
 
-/** Status tabs: which Instantly statuses each one shows. */
+/** Status filter: which Instantly statuses each choice shows. */
 const TABS = [
   { value: "", label: "All campaigns", statuses: null },
   { value: "active", label: "Active", statuses: [1, 4] },
@@ -50,25 +49,17 @@ const TABS = [
   { value: "attention", label: "Need attention", statuses: [-1, -2, -99] },
 ] as const;
 
-function hrefWith(params: Record<string, string | undefined>, status: string) {
-  const next = new URLSearchParams();
-  if (params.q) next.set("q", params.q);
-  if (status) next.set("status", status);
-  const query = next.toString();
-  return query ? `/campaigns?${query}` : "/campaigns";
-}
-
 export default async function CampaignsPage({ searchParams }: Props) {
   await requireWorkspace();
   const params = await searchParams;
   const tab = TABS.find((t) => t.value === (params.status ?? "")) ?? TABS[0];
   const q = (params.q ?? "").trim().toLowerCase();
 
-  const header = (description?: string, tabs?: ReactNode) => (
+  const header = (description?: string) => (
     <PageHeader
       title="Email Campaigns"
       description={description}
-      tabs={tabs}
+      tabs={<CampaignSectionTabs active="campaigns" />}
       actions={
         <>
           {instantlyConfigured() && <PollRefresh />}
@@ -176,21 +167,7 @@ export default async function CampaignsPage({ searchParams }: Props) {
 
   return (
     <>
-      {header(
-        `${campaigns.length.toLocaleString()} campaigns`,
-        <PageTabs
-          label="Campaign status"
-          tabs={TABS.filter(
-            (t) =>
-              !t.statuses || count(t.statuses) > 0 || t.value === tab.value,
-          ).map((t) => ({
-            label: t.label,
-            href: hrefWith(params, t.value),
-            active: t.value === tab.value,
-            count: count(t.statuses),
-          }))}
-        />,
-      )}
+      {header(`${campaigns.length.toLocaleString()} campaigns`)}
 
       <div className="mb-4 grid overflow-hidden rounded-lg border bg-card sm:grid-cols-2 lg:grid-cols-5">
         {totals.map((t) => (
@@ -212,6 +189,18 @@ export default async function CampaignsPage({ searchParams }: Props) {
 
       <Toolbar>
         <SearchInput placeholder="Search campaigns…" />
+        <FilterSelect
+          param="status"
+          label="Status"
+          options={TABS.filter(
+            (t) =>
+              !t.statuses || count(t.statuses) > 0 || t.value === tab.value,
+          ).map((t) => ({
+            value: t.value,
+            label: t.label,
+            hint: String(count(t.statuses)),
+          }))}
+        />
       </Toolbar>
 
       {shown.length === 0 ? (
